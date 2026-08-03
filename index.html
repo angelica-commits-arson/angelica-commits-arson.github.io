@@ -63,11 +63,11 @@
       cursor: move;
     }
 
-    #player-window { width: 640px; top: 40px; left: 100px; }
-    #clock-window { width: 220px; top: 40px; left: 760px; }
-    #display-window { width: 300px; top: 200px; left: 760px; }
-    #minesweeper-window { width: 260px; top: 150px; left: 450px; }
-    #f1-window { width: 680px; top: 50px; left: 80px; }
+    #player-window { width: 720px; top: 40px; left: 80px; }
+    #clock-window { width: 220px; top: 40px; left: 820px; }
+    #display-window { width: 300px; top: 200px; left: 820px; }
+    #minesweeper-window { width: 260px; top: 150px; left: 500px; }
+    #f1-window { width: 680px; top: 50px; left: 60px; }
 
     .address-bar-container {
       display: flex;
@@ -77,10 +77,78 @@
       margin-bottom: 6px;
     }
 
+    /* Split Layout for Explorer Window */
+    .explorer-split-container {
+      display: flex;
+      gap: 6px;
+      height: 320px;
+    }
+
+    /* Win98 Folder Sidebar */
+    .explorer-sidebar {
+      width: 210px;
+      min-width: 170px;
+      background: #ffffff;
+      box-shadow: inset -1px -1px #fff, inset 1px 1px #0a0a0a, inset -2px -2px #dfdfdf, inset 2px 2px #808080;
+      overflow-y: auto;
+      padding: 6px;
+      font-size: 11px;
+    }
+
+    .sidebar-header {
+      font-weight: bold;
+      background: #000080;
+      color: white;
+      padding: 2px 4px;
+      margin-bottom: 6px;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .folder-tree {
+      list-style: none;
+      padding-left: 0;
+      margin: 0;
+    }
+
+    .folder-item {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      padding: 3px 4px;
+      cursor: pointer;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      border: 1px transparent dotted;
+    }
+
+    .folder-item:hover {
+      background-color: #000080;
+      color: #ffffff;
+    }
+
+    .folder-item.active {
+      background-color: #000080;
+      color: #ffffff;
+      border-color: #ffffff;
+    }
+
     .browser-content {
       background: #ffffff;
       box-shadow: inset -1px -1px #fff, inset 1px 1px #0a0a0a, inset -2px -2px #dfdfdf, inset 2px 2px #808080;
       height: 320px;
+      overflow-y: auto;
+      padding: 8px;
+      color: black;
+    }
+
+    .browser-content-main {
+      flex-grow: 1;
+      background: #ffffff;
+      box-shadow: inset -1px -1px #fff, inset 1px 1px #0a0a0a, inset -2px -2px #dfdfdf, inset 2px 2px #808080;
+      height: 100%;
       overflow-y: auto;
       padding: 8px;
       color: black;
@@ -248,89 +316,6 @@
       font-size: 11px;
       background: #c0c0c0;
     }
-    /* Split Layout for Explorer Window */
-<div id="explorer-section" style="display: none;">
-  <div class="explorer-split-container">
-    
-    <!-- Win98 Folders Sidebar -->
-    <div class="explorer-sidebar">
-      <div class="sidebar-header">
-        📁 <span>Folders / Playlists</span>
-      </div>
-      <ul class="folder-tree" id="playlist-folder-list">
-        <li style="color: #666; padding: 4px;">Loading playlists...</li>
-      </ul>
-    </div>
-
-    <!-- Main View (Search Results or Selected Playlist) -->
-    <div class="browser-content-main" id="view-container">
-      <p style="color: #666;">Use the search bar above or select a folder from the sidebar to browse music.</p>
-    </div>
-
-  </div>
-</div>
-
-/* Win98 Folder Sidebar */
-.explorer-sidebar {
-  width: 200px;
-  min-width: 160px;
-  background: #ffffff;
-  box-shadow: inset -1px -1px #fff, inset 1px 1px #0a0a0a, inset -2px -2px #dfdfdf, inset 2px 2px #808080;
-  overflow-y: auto;
-  padding: 6px;
-  font-size: 11px;
-}
-
-.sidebar-header {
-  font-weight: bold;
-  background: #000080;
-  color: white;
-  padding: 2px 4px;
-  margin-bottom: 6px;
-  display: flex;
-  align-items: center;
-  gap: 4px;
-}
-
-.folder-tree {
-  list-style: none;
-  padding-left: 0;
-  margin: 0;
-}
-
-.folder-item {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  padding: 3px 4px;
-  cursor: pointer;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  border: 1px transparent dotted;
-}
-
-.folder-item:hover {
-  background-color: #000080;
-  color: #ffffff;
-}
-
-.folder-item.active {
-  background-color: #000080;
-  color: #ffffff;
-  border-color: #ffffff;
-}
-
-/* Main Content Area adjustments */
-.browser-content-main {
-  flex-grow: 1;
-  background: #ffffff;
-  box-shadow: inset -1px -1px #fff, inset 1px 1px #0a0a0a, inset -2px -2px #dfdfdf, inset 2px 2px #808080;
-  height: 100%;
-  overflow-y: auto;
-  padding: 8px;
-  color: black;
-}
   </style>
 </head>
 <body id="desktop-body">
@@ -378,16 +363,29 @@
 
       <div class="now-playing-banner" id="now-playing-title">Status: Disconnected</div>
 
-      <div class="browser-content" id="content-area">
-        <div id="auth-section">
-          <p>Welcome! Click below to authorize your Spotify account.</p>
-          <button id="login-btn">Connect Spotify</button>
-        </div>
+      <div id="auth-section" class="browser-content">
+        <p>Welcome! Click below to authorize your Spotify account.</p>
+        <button id="login-btn">Connect Spotify</button>
+      </div>
 
-        <div id="explorer-section" style="display: none;">
-          <div id="view-container">
-            <p style="color: #666;">Use the search bar above to search for tracks across Spotify.</p>
+      <div id="explorer-section" style="display: none;">
+        <div class="explorer-split-container">
+          
+          <!-- Win98 Folders Sidebar -->
+          <div class="explorer-sidebar">
+            <div class="sidebar-header">
+              📁 <span>Folders / Playlists</span>
+            </div>
+            <ul class="folder-tree" id="playlist-folder-list">
+              <li style="color: #666; padding: 4px;">Loading playlists...</li>
+            </ul>
           </div>
+
+          <!-- Main View Area -->
+          <div class="browser-content-main" id="view-container">
+            <p style="color: #666;">Use the search bar above or click a playlist folder to start listening.</p>
+          </div>
+
         </div>
       </div>
 
@@ -404,7 +402,7 @@
   <!-- 2. WIKIPEDIA F1 ARCHIVES WINDOW -->
   <div class="window" id="f1-window">
     <div class="title-bar">
-      <div class="title-bar-text">Formula 1 Wikipedia Archives (1981 - Present)</div>
+      <div class="title-bar-text">Formula 1 Wikipedia Archives (1950 - Present)</div>
       <div class="title-bar-controls">
         <button aria-label="Minimize" onclick="toggleWindow('f1-window')"></button>
         <button aria-label="Close" onclick="toggleWindow('f1-window')"></button>
@@ -504,7 +502,6 @@
   <script>
     const CLIENT_ID = '4692b9fae514427c9a94e6bde0d8e390'; 
     const REDIRECT_URI = 'https://angelica-commits-arson.github.io/'; 
-    const SCOPES = 'streaming user-read-email user-read-private user-modify-playback-state user-read-playback-state';
     const SCOPES = 'streaming user-read-email user-read-private user-modify-playback-state user-read-playback-state playlist-read-private playlist-read-collaborative';
 
     let spotifyPlayer = null;
@@ -629,219 +626,223 @@
     }
 
     // ==========================================
-    // SPOTIFY OPEN SEARCH & MUSIC PLAYER
+    // SPOTIFY OPEN SEARCH & PLAYLIST FOLDERS
     // ==========================================
     async function performSpotifySearch() {
-  const input = document.getElementById('search-input');
-  const container = document.getElementById('view-container');
-  if (!input || !container) return;
+      const input = document.getElementById('search-input');
+      const container = document.getElementById('view-container');
+      if (!input || !container) return;
 
-  const query = input.value.trim();
-  if (!query) {
-    container.innerHTML = '<p>Please enter a search term.</p>';
-    return;
-  }
-
-  container.innerHTML = `<p>Searching Spotify for "${query}"...</p>`;
-
-  try {
-    const token = await getValidAccessToken();
-    if (!token) {
-      container.innerHTML = '<p style="color: red;">No active session. Click "Connect Spotify" to authenticate.</p>';
-      document.getElementById('auth-section').style.display = 'block';
-      document.getElementById('explorer-section').style.display = 'none';
-      return;
-    }
-
-    // OMIT limit completely -> Spotify defaults to 20 automatically
-    const endpoint = `https://api.spotify.com/v1/search?q=${encodeURIComponent(query)}&type=track`;
-
-    const response = await fetch(endpoint, {
-      method: 'GET',
-      headers: { 
-        'Authorization': `Bearer ${token}`
-        // Do NOT include 'Content-Type': 'application/json' on GET requests
+      const query = input.value.trim();
+      if (!query) {
+        container.innerHTML = '<p>Please enter a search term.</p>';
+        return;
       }
+
+      // Unselect any active folder item
+      document.querySelectorAll('.folder-item').forEach(el => el.classList.remove('active'));
+
+      container.innerHTML = `<p>Searching Spotify for "${query}"...</p>`;
+
+      try {
+        const token = await getValidAccessToken();
+        if (!token) {
+          container.innerHTML = '<p style="color: red;">No active session. Click "Connect Spotify" to authenticate.</p>';
+          document.getElementById('auth-section').style.display = 'block';
+          document.getElementById('explorer-section').style.display = 'none';
+          return;
+        }
+
+        const endpoint = `https://api.spotify.com/v1/search?q=${encodeURIComponent(query)}&type=track`;
+
+        const response = await fetch(endpoint, {
+          method: 'GET',
+          headers: { 
+            'Authorization': `Bearer ${token}`
+          }
+        });
+
+        if (response.status === 401 || response.status === 403) {
+          localStorage.clear();
+          container.innerHTML = `<p style="color:red;">Token expired. Please reconnect Spotify.</p>`;
+          document.getElementById('auth-section').style.display = 'block';
+          document.getElementById('explorer-section').style.display = 'none';
+          return;
+        }
+
+        if (!response.ok) {
+          const errData = await response.json().catch(() => null);
+          const detail = errData?.error?.message || `HTTP ${response.status}`;
+          container.innerHTML = `<p style="color:red;">Search API Error: ${detail}</p>`;
+          return;
+        }
+
+        const data = await response.json();
+        const tracks = data?.tracks?.items || [];
+
+        if (tracks.length === 0) {
+          container.innerHTML = `<p>No tracks found for "${query}". Try another term.</p>`;
+          return;
+        }
+
+        let listHTML = `
+          <h4 style="margin-top:0; margin-bottom: 8px; border-bottom: 1px dotted #808080; padding-bottom: 4px;">🔍 Search Results for "${query}"</h4>
+          <ul style="list-style: none; padding: 0; margin: 0;">
+        `;
+
+        tracks.forEach(t => {
+          const artist = (t.artists && t.artists.length > 0) ? t.artists[0].name : 'Unknown Artist';
+          const album = t.album ? t.album.name : '';
+          
+          listHTML += `
+            <li class="track-item">
+              <div>
+                <strong>${t.name}</strong> - ${artist}
+                <br><small style="color:#666;">${album}</small>
+              </div>
+              <button onclick="playSingleTrack('${t.uri}')">▶ Play</button>
+            </li>
+          `;
+        });
+        listHTML += '</ul>';
+        container.innerHTML = listHTML;
+
+      } catch (err) {
+        console.error('Spotify Search Exception:', err);
+        container.innerHTML = '<p style="color:red;">Error executing search. Check browser console.</p>';
+      }
+    }
+
+    document.getElementById('search-input').addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') performSpotifySearch();
     });
 
-    if (response.status === 401 || response.status === 403) {
-      localStorage.clear();
-      container.innerHTML = `<p style="color:red;">Token expired. Please reconnect Spotify.</p>`;
-      document.getElementById('auth-section').style.display = 'block';
-      document.getElementById('explorer-section').style.display = 'none';
-      return;
+    // Load user playlists as folders
+    async function loadUserPlaylists() {
+      const sidebarList = document.getElementById('playlist-folder-list');
+      if (!sidebarList) return;
+
+      try {
+        const token = await getValidAccessToken();
+        if (!token) return;
+
+        const response = await fetch('https://api.spotify.com/v1/me/playlists?limit=50', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+
+        if (!response.ok) {
+          sidebarList.innerHTML = '<li style="color: red; padding:4px;">Failed to load folders</li>';
+          return;
+        }
+
+        const data = await response.json();
+        const playlists = data.items || [];
+
+        if (playlists.length === 0) {
+          sidebarList.innerHTML = '<li style="padding:4px;">No playlists found</li>';
+          return;
+        }
+
+        let html = '';
+        playlists.forEach(pl => {
+          const safeName = pl.name.replace(/'/g, "\\'").replace(/"/g, '&quot;');
+          html += `
+            <li class="folder-item" onclick="loadPlaylistTracks('${pl.id}', '${safeName}', '${pl.uri}', this)">
+              <span>📁</span>
+              <span title="${pl.name}">${pl.name}</span>
+            </li>
+          `;
+        });
+
+        sidebarList.innerHTML = html;
+
+      } catch (err) {
+        console.error('Playlist Fetch Error:', err);
+        sidebarList.innerHTML = '<li style="color: red; padding:4px;">Error loading folders</li>';
+      }
     }
 
-    if (!response.ok) {
-      const errData = await response.json().catch(() => null);
-      console.error('Spotify API Error Response:', errData);
-      const detail = errData?.error?.message || `HTTP ${response.status}`;
-      container.innerHTML = `<p style="color:red;">Search API Error: ${detail}</p>`;
-      return;
-    }
+    // Load tracks inside chosen playlist folder
+    async function loadPlaylistTracks(playlistId, playlistName, playlistUri, element) {
+      const container = document.getElementById('view-container');
+      if (!container) return;
 
-    const data = await response.json();
-    const tracks = data?.tracks?.items || [];
+      document.querySelectorAll('.folder-item').forEach(el => el.classList.remove('active'));
+      if (element) element.classList.add('active');
 
-    if (tracks.length === 0) {
-      container.innerHTML = `<p>No tracks found for "${query}". Try another term.</p>`;
-      return;
-    }
+      container.innerHTML = `<p>Opening folder "<strong>${playlistName}</strong>"...</p>`;
 
-    let listHTML = '<ul style="list-style: none; padding: 0; margin: 0;">';
-    tracks.forEach(t => {
-      const artist = (t.artists && t.artists.length > 0) ? t.artists[0].name : 'Unknown Artist';
-      const album = t.album ? t.album.name : '';
-      
-      listHTML += `
-        <li class="track-item">
-          <div>
-            <strong>${t.name}</strong> - ${artist}
-            <br><small style="color:#666;">${album}</small>
+      try {
+        const token = await getValidAccessToken();
+        if (!token) return;
+
+        const response = await fetch(`https://api.spotify.com/v1/playlists/${playlistId}/tracks`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+
+        if (!response.ok) {
+          container.innerHTML = `<p style="color:red;">Error loading playlist contents.</p>`;
+          return;
+        }
+
+        const data = await response.json();
+        const items = data.items || [];
+
+        let headerHTML = `
+          <div style="display:flex; justify-space-between; align-items:center; margin-bottom:8px; padding-bottom:4px; border-bottom:1px solid #808080;">
+            <h4 style="margin:0;">📁 Folder: ${playlistName} (${items.length} tracks)</h4>
+            <button onclick="playPlaylistContext('${playlistUri}')">▶ Play Folder</button>
           </div>
-          <button onclick="playSingleTrack('${t.uri}')">▶ Play</button>
-        </li>
-      `;
-    });
-    listHTML += '</ul>';
-    container.innerHTML = listHTML;
+        `;
 
-  } catch (err) {
-    console.error('Spotify Search Exception:', err);
-    container.innerHTML = '<p style="color:red;">Error executing search. Check console.</p>';
-  }
-      // Fetch user playlists and render as Windows Folders
-async function loadUserPlaylists() {
-  const sidebarList = document.getElementById('playlist-folder-list');
-  if (!sidebarList) return;
+        if (items.length === 0) {
+          container.innerHTML = headerHTML + '<p>This folder is empty.</p>';
+          return;
+        }
 
-  try {
-    const token = await getValidAccessToken();
-    if (!token) return;
+        let listHTML = headerHTML + '<ul style="list-style: none; padding: 0; margin: 0;">';
+        items.forEach(item => {
+          const t = item.track;
+          if (!t) return;
+          const artist = (t.artists && t.artists.length > 0) ? t.artists[0].name : 'Unknown Artist';
+          const album = t.album ? t.album.name : '';
 
-    const response = await fetch('https://api.spotify.com/v1/me/playlists?limit=50', {
-      headers: { 'Authorization': `Bearer ${token}` }
-    });
+          listHTML += `
+            <li class="track-item">
+              <div>
+                <strong>${t.name}</strong> - ${artist}
+                <br><small style="color:#666;">${album}</small>
+              </div>
+              <button onclick="playSingleTrack('${t.uri}')">▶ Play</button>
+            </li>
+          `;
+        });
+        listHTML += '</ul>';
+        container.innerHTML = listHTML;
 
-    if (!response.ok) {
-      sidebarList.innerHTML = '<li style="color: red; padding:4px;">Failed to load playlists</li>';
-      return;
+      } catch (err) {
+        console.error('Error fetching playlist tracks:', err);
+        container.innerHTML = '<p style="color:red;">Error loading folder tracks.</p>';
+      }
     }
 
-    const data = await response.json();
-    const playlists = data.items || [];
+    async function playPlaylistContext(contextUri) {
+      if (!activeDeviceId) {
+        alert('Player is not active yet.');
+        return;
+      }
+      const token = await getValidAccessToken();
 
-    if (playlists.length === 0) {
-      sidebarList.innerHTML = '<li style="padding:4px;">No playlists found</li>';
-      return;
+      await fetch(`https://api.spotify.com/v1/me/player/play?device_id=${activeDeviceId}`, {
+        method: 'PUT',
+        body: JSON.stringify({ context_uri: contextUri }),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+      });
     }
 
-    let html = '';
-    playlists.forEach(pl => {
-      html += `
-        <li class="folder-item" onclick="loadPlaylistTracks('${pl.id}', '${escapeQuotes(pl.name)}', '${pl.uri}', this)">
-          <span>📁</span>
-          <span title="${pl.name}">${pl.name}</span>
-        </li>
-      `;
-    });
-
-    sidebarList.innerHTML = html;
-
-  } catch (err) {
-    console.error('Playlist Fetch Error:', err);
-    sidebarList.innerHTML = '<li style="color: red; padding:4px;">Error loading folders</li>';
-  }
-}
-
-// Utility to escape quotes for HTML inline handler
-function escapeQuotes(str) {
-  return str.replace(/'/g, "\\'").replace(/"/g, '&quot;');
-}
-
-// Fetch tracks inside a selected playlist folder
-async function loadPlaylistTracks(playlistId, playlistName, playlistUri, element) {
-  const container = document.getElementById('view-container');
-  if (!container) return;
-
-  // Highlight active folder in sidebar
-  document.querySelectorAll('.folder-item').forEach(el => el.classList.remove('active'));
-  if (element) element.classList.add('active');
-
-  container.innerHTML = `<p>Opening folder "<strong>${playlistName}</strong>"...</p>`;
-
-  try {
-    const token = await getValidAccessToken();
-    if (!token) return;
-
-    const response = await fetch(`https://api.spotify.com/v1/playlists/${playlistId}/tracks`, {
-      headers: { 'Authorization': `Bearer ${token}` }
-    });
-
-    if (!response.ok) {
-      container.innerHTML = `<p style="color:red;">Error loading playlist contents.</p>`;
-      return;
-    }
-
-    const data = await response.json();
-    const items = data.items || [];
-
-    let headerHTML = `
-      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; padding-bottom:4px; border-bottom:1px solid #808080;">
-        <h4 style="margin:0;">📁 Folder: ${playlistName} (${items.length} tracks)</h4>
-        <button onclick="playPlaylistContext('${playlistUri}')">▶ Play Folder</button>
-      </div>
-    `;
-
-    if (items.length === 0) {
-      container.innerHTML = headerHTML + '<p>This folder is empty.</p>';
-      return;
-    }
-
-    let listHTML = headerHTML + '<ul style="list-style: none; padding: 0; margin: 0;">';
-    items.forEach(item => {
-      const t = item.track;
-      if (!t) return;
-      const artist = (t.artists && t.artists.length > 0) ? t.artists[0].name : 'Unknown Artist';
-      const album = t.album ? t.album.name : '';
-
-      listHTML += `
-        <li class="track-item">
-          <div>
-            <strong>${t.name}</strong> - ${artist}
-            <br><small style="color:#666;">${album}</small>
-          </div>
-          <button onclick="playSingleTrack('${t.uri}')">▶ Play</button>
-        </li>
-      `;
-    });
-    listHTML += '</ul>';
-    container.innerHTML = listHTML;
-
-  } catch (err) {
-    console.error('Error fetching playlist tracks:', err);
-    container.innerHTML = '<p style="color:red;">Error loading folder tracks.</p>';
-  }
-}
-
-// Play entire playlist context
-async function playPlaylistContext(contextUri) {
-  if (!activeDeviceId) {
-    alert('Player is not active yet.');
-    return;
-  }
-  const token = await getValidAccessToken();
-
-  await fetch(`https://api.spotify.com/v1/me/player/play?device_id=${activeDeviceId}`, {
-    method: 'PUT',
-    body: JSON.stringify({ context_uri: contextUri }),
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${token}`
-    },
-  });
-}
-}
     // ==========================================
     // MINESWEEPER LOGIC
     // ==========================================
@@ -1172,6 +1173,9 @@ async function playPlaylistContext(contextUri) {
         document.getElementById('now-playing-title').innerText = 'Status: Connected & Ready';
         document.getElementById('auth-section').style.display = 'none';
         document.getElementById('explorer-section').style.display = 'block';
+
+        // Load folder sidebar upon player ready
+        loadUserPlaylists();
       });
 
       spotifyPlayer.addListener('player_state_changed', state => {
@@ -1221,27 +1225,20 @@ async function playPlaylistContext(contextUri) {
         await fetchTokens(code);
         document.getElementById('auth-section').style.display = 'none';
         document.getElementById('explorer-section').style.display = 'block';
+        loadUserPlaylists();
       } else {
         const token = await getValidAccessToken();
         if (token) {
           document.getElementById('auth-section').style.display = 'none';
           document.getElementById('explorer-section').style.display = 'block';
+          loadUserPlaylists();
           if (window.Spotify) {
             window.onSpotifyWebPlaybackSDKReady();
           }
         }
       }
-      spotifyPlayer.addListener('ready', ({ device_id }) => {
-  activeDeviceId = device_id;
-  document.getElementById('device-status').innerText = 'Online';
-  document.getElementById('now-playing-title').innerText = 'Status: Connected & Ready';
-  document.getElementById('auth-section').style.display = 'none';
-  document.getElementById('explorer-section').style.display = 'block';
-
-  // Load playlists sidebar upon ready
-  loadUserPlaylists();
-});
     }
+
     initApp();
   </script>
 </body>
