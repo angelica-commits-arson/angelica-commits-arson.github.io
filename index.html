@@ -3,168 +3,11 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Retro Media Player</title>
-  <!-- 98.css for authentic Windows 98 UI elements -->
+  <title>Retro IE Spotify Player</title>
+  <!-- Win98 Retro Styling Framework -->
   <link rel="stylesheet" href="https://unpkg.com/98.css">
   <!-- Spotify Web Playback SDK -->
   <script src="https://sdk.scdn.co/spotify-player.js"></script>
-  <style>
-    body {
-      background-color: #008080; /* Classic Windows Teal */
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      min-height: 100vh;
-      margin: 0;
-      font-family: 'Pixelated MS Sans Serif', Arial, sans-serif;
-    }
-
-    .window {
-      width: 650px;
-      max-width: 95vw;
-    }
-
-    .address-bar-container {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      padding: 4px;
-      margin-bottom: 6px;
-    }
-
-    .browser-content {
-      background: #ffffff;
-      box-shadow: inset -1px -1px #fff, inset 1px 1px #0a0a0a, inset -2px -2px #dfdfdf, inset 2px 2px #808080;
-      height: 320px;
-      overflow-y: auto;
-      padding: 12px;
-    }
-
-    .track-item {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding: 6px;
-      border-bottom: 1px dotted #808080;
-    }
-
-    .player-controls {
-      margin-top: 10px;
-      padding: 8px;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-
-    .now-playing {
-      font-weight: bold;
-      color: #000080;
-      margin-bottom: 8px;
-      background: #c0c0c0;
-      padding: 4px;
-      border: 1px solid #808080;
-    }
-  </style>
-</head>
-<body>
-
-  <div class="window">
-    <div class="title-bar">
-      <div class="title-bar-text">Internet Explorer - Retro Spotify Player</div>
-      <div class="title-bar-controls">
-        <button aria-label="Minimize"></button>
-        <button aria-label="Maximize"></button>
-        <button aria-label="Close"></button>
-      </div>
-    </div>
-
-    <div class="window-body">
-      <!-- Address Bar Controls -->
-      <div class="address-bar-container">
-        <button>Back</button>
-        <button>Forward</button>
-        <label for="address">Address:</label>
-        <input id="address" type="text" value="https://spotify.local/player" style="flex-grow: 1;" readonly>
-      </div>
-
-      <!-- Blank Space / Content Display -->
-      <div class="browser-content" id="content-area">
-        <div id="auth-section">
-          <p>Welcome! Connect your Spotify Premium account to access your library directly inside this browser.</p>
-          <button id="login-btn">Connect Spotify</button>
-        </div>
-
-        <div id="tracks-list" style="display: none;">
-          <div class="now-playing" id="now-playing-title">Status: Ready to play</div>
-          <ul id="songs-container" style="list-style: none; padding: 0; margin: 0;"></ul>
-        </div>
-      </div>
-
-      <!-- Win98 Bottom Media Control Bar -->
-      <div class="field-row player-controls">
-        <button id="play-btn">▶ Play</button>
-        <button id="pause-btn">⏸ Pause</button>
-        <button id="next-btn">⏭ Next</button>
-        <button id="logout-btn" style="margin-left: auto;">Logout</button>
-      </div>
-    </div>
-  </div>
-
-  <script>
-    // ==========================================
-    // CONFIGURATION
-    // ==========================================
-    const CLIENT_ID = '4692b9fae514427c9a94e6bde0d8e390'; // Replace with your Spotify Client ID
-    const REDIRECT_URI = 'https://angelica-commits-arson.github.io/'; // Match your Spotify Dashboard exact Redirect URI
-    const SCOPES = 'user-read-recently-played user-library-read user-modify-playback-state streaming user-read-playback-state';
-
-    let spotifyPlayer = null;
-    let deviceId = null;
-
-    // ==========================================
-    // PKCE HELPER FUNCTIONS (OAuth Authorization)
-    // ==========================================
-    function generateRandomString(length) {
-      const possible = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-      const values = crypto.getRandomValues(new Uint8Array(length));
-      return values.reduce((acc, x) => acc + possible[x % possible.length], "");
-    }
-
-    async function sha256(plain) {
-      const encoder = new TextEncoder();
-      const data = encoder.encode(plain);
-      return window.crypto.subtle.digest('SHA-256', data);
-    }
-
-    function base64urlencode(a) {
-      return btoa(String.fromCharCode.apply(null, new Uint8Array(a)))
-        .replace(/\+/g, '-').replace(/\//g,Here is the complete, single-file implementation (`index.html`) using **vanilla JavaScript** and **98.css**. 
-
-To handle long-term sessions seamlessly without forcing you to re-login every hour, this implementation uses Spotify's **Authorization Code Flow with PKCE** to handle access tokens and refresh tokens securely in the browser.
-
----
-
-### Prerequisites Before Running
-1. Register your app in the **[Spotify Developer Dashboard](https://developer.spotify.com/dashboard)**.
-2. Set your **Redirect URI** to `http://localhost:3000` (or `http://127.0.0.1:3000`).
-3. Replace `YOUR_SPOTIFY_CLIENT_ID` in the code below with your actual Client ID.
-4. Serve the file using a local development server (e.g., VS Code Live Server, `npx serve`, or `python -m http.server 3000`).
-
----
-
-### Complete Code (`index.html`)
-
-```html
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Retro IE Spotify Player</title>
-  <!-- Win98 Retro Styling Framework -->
-  <link rel="stylesheet" href="[https://unpkg.com/98.css](https://unpkg.com/98.css)">
-  <!-- Spotify Web Playback SDK -->
-  <script src="[https://sdk.scdn.co/spotify-player.js](https://sdk.scdn.co/spotify-player.js)"></script>
   <style>
     body {
       background-color: #008080;
@@ -227,7 +70,7 @@ To handle long-term sessions seamlessly without forcing you to re-login every ho
   <div class="window">
     <!-- Window Title Bar -->
     <div class="title-bar">
-      <div class="title-bar-text">Internet Explorer - Vintage Media Player</div>
+      <div class="title-bar-text">Internet Explorer - Retro Spotify Player</div>
       <div class="title-bar-controls">
         <button aria-label="Minimize"></button>
         <button aria-label="Maximize"></button>
@@ -241,7 +84,7 @@ To handle long-term sessions seamlessly without forcing you to re-login every ho
         <button>Back</button>
         <button>Forward</button>
         <label for="address">Address:</label>
-        <input id="address" type="text" value="[https://spotify.local/player](https://spotify.local/player)" style="flex-grow: 1;" readonly>
+        <input id="address" type="text" value="https://spotify.local/player" style="flex-grow: 1;" readonly>
       </div>
 
       <!-- Blank Space / Main Display Area -->
@@ -270,8 +113,8 @@ To handle long-term sessions seamlessly without forcing you to re-login every ho
 
   <script>
     // Configuration Settings
-    const CLIENT_ID = 'YOUR_SPOTIFY_CLIENT_ID'; 
-    const REDIRECT_URI = 'http://localhost:3000'; 
+    const CLIENT_ID = '4692b9fae514427c9a94e6bde0d8e390'; 
+    const REDIRECT_URI = 'https://angelica-commits-arson.github.io/'; 
     const SCOPES = 'user-read-recently-played user-library-read user-modify-playback-state streaming user-read-playback-state';
 
     let spotifyPlayer = null;
@@ -314,14 +157,14 @@ To handle long-term sessions seamlessly without forcing you to re-login every ho
         redirect_uri: REDIRECT_URI,
       });
 
-      window.location.href = `[https://accounts.spotify.com/authorize?$](https://accounts.spotify.com/authorize?$){params.toString()}`;
+      window.location.href = `https://accounts.spotify.com/authorize?${params.toString()}`;
     }
 
     // Retrieve Token using Auth Code
     async function fetchTokens(code) {
       const codeVerifier = localStorage.getItem('code_verifier');
 
-      const response = await fetch('[https://accounts.spotify.com/api/token](https://accounts.spotify.com/api/token)', {
+      const response = await fetch('https://accounts.spotify.com/api/token', {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
         body: new URLSearchParams({
@@ -335,7 +178,7 @@ To handle long-term sessions seamlessly without forcing you to re-login every ho
 
       const data = await response.json();
       saveTokens(data);
-      window.history.replaceState({}, document.title, "/");
+      window.history.replaceState({}, document.title, window.location.pathname);
       return data.access_token;
     }
 
@@ -344,7 +187,7 @@ To handle long-term sessions seamlessly without forcing you to re-login every ho
       const refreshToken = localStorage.getItem('refresh_token');
       if (!refreshToken) return null;
 
-      const response = await fetch('[https://accounts.spotify.com/api/token](https://accounts.spotify.com/api/token)', {
+      const response = await fetch('https://accounts.spotify.com/api/token', {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
         body: new URLSearchParams({
@@ -417,7 +260,7 @@ To handle long-term sessions seamlessly without forcing you to re-login every ho
     // Load recent tracks into the IE viewport
     async function loadRecentTracks() {
       const token = await getValidAccessToken();
-      const response = await fetch('[https://api.spotify.com/v1/me/player/recently-played?limit=15](https://api.spotify.com/v1/me/player/recently-played?limit=15)', {
+      const response = await fetch('https://api.spotify.com/v1/me/player/recently-played?limit=15', {
         headers: { Authorization: `Bearer ${token}` }
       });
       const data = await response.json();
@@ -446,7 +289,7 @@ To handle long-term sessions seamlessly without forcing you to re-login every ho
       if (!activeDeviceId) return;
       const token = await getValidAccessToken();
 
-      await fetch(`[https://api.spotify.com/v1/me/player/play?device_id=$](https://api.spotify.com/v1/me/player/play?device_id=$){activeDeviceId}`, {
+      await fetch(`https://api.spotify.com/v1/me/player/play?device_id=${activeDeviceId}`, {
         method: 'PUT',
         body: JSON.stringify({ uris: [uri] }),
         headers: {
@@ -478,7 +321,6 @@ To handle long-term sessions seamlessly without forcing you to re-login every ho
       } else {
         const token = await getValidAccessToken();
         if (token && window.Spotify) {
-          // Trigger SDK ready manually if script loaded faster than token resolution
           window.onSpotifyWebPlaybackSDKReady();
         }
       }
