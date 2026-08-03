@@ -61,13 +61,28 @@
 
     .window .title-bar {
       cursor: move;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .title-bar-title-group {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .title-bar-icon {
+      width: 16px;
+      height: 16px;
+      image-rendering: pixelated;
     }
 
     #player-window { width: 740px; top: 40px; left: 80px; }
     #clock-window { width: 220px; top: 40px; left: 840px; }
     #display-window { width: 300px; top: 200px; left: 840px; }
     #minesweeper-window { width: 260px; top: 150px; left: 520px; }
-    #f1-window { width: 680px; top: 50px; left: 60px; }
+    #f1-window { width: 700px; top: 50px; left: 60px; }
 
     .address-bar-container {
       display: flex;
@@ -334,7 +349,7 @@
       <span>Spotify Player</span>
     </div>
     <div class="desktop-icon" onclick="toggleWindow('f1-window')">
-      <img src="https://win98icons.alexmeub.com/icons/png/accessibility_two_pointers-0.png" alt="F1 Stats">
+      <img src="https://win98icons.alexmeub.com/icons/png/joystick-0.png" alt="F1 Stats">
       <span>F1 Wiki</span>
     </div>
     <div class="desktop-icon" onclick="toggleWindow('clock-window')">
@@ -354,7 +369,10 @@
   <!-- 1. SPOTIFY SEARCH & PLAYER WINDOW -->
   <div class="window" id="player-window">
     <div class="title-bar">
-      <div class="title-bar-text">Internet Explorer - Spotify Track Search & Web Player</div>
+      <div class="title-bar-title-group">
+        <img src="https://win98icons.alexmeub.com/icons/png/internet_connection_wiz-0.png" class="title-bar-icon" alt="icon">
+        <div class="title-bar-text">Internet Explorer - Spotify Track Search & Web Player</div>
+      </div>
       <div class="title-bar-controls">
         <button aria-label="Minimize" onclick="toggleWindow('player-window')"></button>
         <button aria-label="Close" onclick="toggleWindow('player-window')"></button>
@@ -412,7 +430,10 @@
   <!-- 2. WIKIPEDIA F1 ARCHIVES WINDOW -->
   <div class="window" id="f1-window">
     <div class="title-bar">
-      <div class="title-bar-text">Formula 1 Wikipedia Archives (1981 - Present)</div>
+      <div class="title-bar-title-group">
+        <img src="https://win98icons.alexmeub.com/icons/png/joystick-0.png" class="title-bar-icon" alt="F1 Icon">
+        <div class="title-bar-text">Formula 1 Wikipedia Archives (1981 - Present)</div>
+      </div>
       <div class="title-bar-controls">
         <button aria-label="Minimize" onclick="toggleWindow('f1-window')"></button>
         <button aria-label="Close" onclick="toggleWindow('f1-window')"></button>
@@ -423,8 +444,9 @@
         <label for="f1-year-select">Season:</label>
         <select id="f1-year-select"></select>
 
+        <button onclick="loadWikiF1View('teams')">🏎️ Team / Constructor Standings</button>
+        <button onclick="loadWikiF1View('drivers')">🏆 Driver Standings</button>
         <button onclick="loadWikiF1View('schedule')">📅 Race Calendar</button>
-        <button onclick="loadWikiF1View('standings')">🏆 Driver Standings</button>
       </div>
 
       <div class="browser-content" id="f1-results-container">
@@ -436,7 +458,10 @@
   <!-- 3. CLOCK GADGET WINDOW -->
   <div class="window" id="clock-window">
     <div class="title-bar">
-      <div class="title-bar-text">Clock</div>
+      <div class="title-bar-title-group">
+        <img src="https://win98icons.alexmeub.com/icons/png/clock-0.png" class="title-bar-icon" alt="icon">
+        <div class="title-bar-text">Clock</div>
+      </div>
       <div class="title-bar-controls">
         <button aria-label="Close" onclick="toggleWindow('clock-window')"></button>
       </div>
@@ -449,7 +474,10 @@
   <!-- 4. DISPLAY PROPERTIES WINDOW -->
   <div class="window" id="display-window">
     <div class="title-bar">
-      <div class="title-bar-text">Display Properties</div>
+      <div class="title-bar-title-group">
+        <img src="https://win98icons.alexmeub.com/icons/png/display_properties-0.png" class="title-bar-icon" alt="icon">
+        <div class="title-bar-text">Display Properties</div>
+      </div>
       <div class="title-bar-controls">
         <button aria-label="Close" onclick="toggleWindow('display-window')"></button>
       </div>
@@ -485,7 +513,10 @@
   <!-- 5. MINESWEEPER WINDOW -->
   <div class="window" id="minesweeper-window" style="display: none;">
     <div class="title-bar">
-      <div class="title-bar-text">Minesweeper</div>
+      <div class="title-bar-title-group">
+        <img src="https://win98icons.alexmeub.com/icons/png/game_mine_1-0.png" class="title-bar-icon" alt="icon">
+        <div class="title-bar-text">Minesweeper</div>
+      </div>
       <div class="title-bar-controls">
         <button aria-label="Close" onclick="toggleWindow('minesweeper-window')"></button>
       </div>
@@ -512,14 +543,8 @@
   <script>
     const CLIENT_ID = '4692b9fae514427c9a94e6bde0d8e390'; 
     const REDIRECT_URI = 'https://angelica-commits-arson.github.io/'; 
-const scopes = [
-  'user-read-private',
-  'user-read-email',
-  'playlist-read-private',
-  'playlist-read-collaborative',
-  'user-modify-playback-state',
-  'user-read-playback-state'
-].join(' ');
+    // Complete playlist permissions explicitly declared
+    const SCOPES = 'streaming user-read-email user-read-private user-modify-playback-state user-read-playback-state playlist-read-private playlist-read-collaborative playlist-modify-public playlist-modify-private';
 
     let spotifyPlayer = null;
     let activeDeviceId = null;
@@ -546,7 +571,7 @@ const scopes = [
     }
 
     // ==========================================
-    // WIKIPEDIA F1 ENGINE (1981 - Present)
+    // WIKIPEDIA F1 ENGINE (Default to Teams/Constructors)
     // ==========================================
     function initF1App() {
       const yearSelect = document.getElementById('f1-year-select');
@@ -563,8 +588,9 @@ const scopes = [
       }
 
       yearSelect.value = '2024';
-      yearSelect.addEventListener('change', () => loadWikiF1View('schedule'));
-      loadWikiF1View('schedule');
+      // Default view is now Teams/Constructors on year change
+      yearSelect.addEventListener('change', () => loadWikiF1View('teams'));
+      loadWikiF1View('teams');
     }
 
     async function loadWikiF1View(viewType) {
@@ -599,21 +625,32 @@ const scopes = [
             return (txt.includes('grand prix') || txt.includes('circuit') || txt.includes('race')) && 
                    (txt.includes('date') || txt.includes('round') || txt.includes('winner'));
           });
-        } else if (viewType === 'standings') {
+        } else if (viewType === 'teams') {
+          // Robust parsing for Constructor / Team standings (including post-2004)
           targetTable = tables.find(t => {
             const txt = t.innerText.toLowerCase();
             const caption = t.querySelector('caption')?.innerText.toLowerCase() || '';
-            const isStandingsHeader = txt.includes('driver') && (txt.includes('pts') || txt.includes('points'));
-            const isNotGrandsPrix = !txt.includes('grand prix calendar') && !caption.includes('results');
-            return isStandingsHeader && isNotGrandsPrix;
+            const isConstructorHeader = (txt.includes('constructor') || txt.includes('team') || txt.includes('make') || txt.includes('entrant')) &&
+                                        (txt.includes('points') || txt.includes('pts') || txt.includes('pos'));
+            const isNotDriverStandings = !caption.includes('driver') && !txt.includes('world drivers');
+            return isConstructorHeader && isNotDriverStandings;
           });
 
+          // Secondary search fallback
           if (!targetTable) {
             targetTable = tables.reverse().find(t => {
               const txt = t.innerText.toLowerCase();
-              return txt.includes('pos') && txt.includes('driver');
+              return (txt.includes('constructor') || txt.includes('team')) && txt.includes('pos');
             });
           }
+        } else if (viewType === 'drivers') {
+          targetTable = tables.find(t => {
+            const txt = t.innerText.toLowerCase();
+            const caption = t.querySelector('caption')?.innerText.toLowerCase() || '';
+            const isDriverHeader = txt.includes('driver') && (txt.includes('pts') || txt.includes('points'));
+            const isNotGrandsPrix = !txt.includes('grand prix calendar') && !caption.includes('results');
+            return isDriverHeader && isNotGrandsPrix;
+          });
         }
 
         if (!targetTable && tables.length > 0) {
@@ -630,8 +667,12 @@ const scopes = [
             }
           });
 
+          let titleLabel = "Teams / Constructors' Championship";
+          if (viewType === 'drivers') titleLabel = "Drivers' Championship Standings";
+          if (viewType === 'schedule') titleLabel = "Race Calendar";
+
           container.innerHTML = `
-            <h4 style="margin-top:0; margin-bottom: 6px;">Wikipedia Archive: ${year} F1 ${viewType === 'schedule' ? 'Race Calendar' : "World Drivers' Championship Standings"}</h4>
+            <h4 style="margin-top:0; margin-bottom: 6px;">Wikipedia Archive: ${year} F1 ${titleLabel}</h4>
             ${targetTable.outerHTML}
           `;
         } else {
@@ -644,7 +685,7 @@ const scopes = [
     }
 
     // ==========================================
-    // SPOTIFY OPEN SEARCH & PLAYLIST MANAGEMENT
+    // SPOTIFY PLAYLIST MANAGEMENT (Fixed 403 & Mixes)
     // ==========================================
     async function loadUserPlaylists() {
       const sidebarList = document.getElementById('playlist-folder-list');
@@ -687,6 +728,78 @@ const scopes = [
       } catch (err) {
         console.error('Playlist Fetch Error:', err);
         sidebarList.innerHTML = '<li style="color: red; padding:4px;">Error loading folders</li>';
+      }
+    }
+
+    async function loadPlaylistTracks(playlistId, playlistName, playlistUri, element) {
+      const container = document.getElementById('view-container');
+      if (!container) return;
+
+      document.querySelectorAll('.folder-item').forEach(el => el.classList.remove('active'));
+      if (element) element.classList.add('active');
+
+      container.innerHTML = `<p>Opening folder "<strong>${playlistName}</strong>"...</p>`;
+
+      try {
+        const token = await getValidAccessToken();
+        if (!token) return;
+
+        // Uses root playlist endpoint to avoid 403/mix permissions issues
+        let response = await fetch(`https://api.spotify.com/v1/playlists/${playlistId}`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+
+        if (!response.ok) {
+          response = await fetch(`https://api.spotify.com/v1/playlists/${playlistId}/tracks?limit=50`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+          });
+        }
+
+        if (!response.ok) {
+          const errData = await response.json().catch(() => null);
+          const msg = errData?.error?.message || `HTTP ${response.status}`;
+          container.innerHTML = `<p style="color:red;">Error loading playlist contents (${msg}).</p>`;
+          return;
+        }
+
+        const data = await response.json();
+        const items = data.tracks ? (data.tracks.items || []) : (data.items || []);
+
+        let headerHTML = `
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; padding-bottom:4px; border-bottom:1px solid #808080;">
+            <h4 style="margin:0;">📁 Folder: ${playlistName} (${items.length} tracks)</h4>
+            <button onclick="playPlaylistContext('${playlistUri}')">▶ Play Folder</button>
+          </div>
+        `;
+
+        if (items.length === 0) {
+          container.innerHTML = headerHTML + '<p>This folder is empty.</p>';
+          return;
+        }
+
+        let listHTML = headerHTML + '<ul style="list-style: none; padding: 0; margin: 0;">';
+        items.forEach(item => {
+          const t = item.track || item;
+          if (!t || !t.name) return;
+          const artist = (t.artists && t.artists.length > 0) ? t.artists[0].name : 'Unknown Artist';
+          const album = t.album ? t.album.name : '';
+
+          listHTML += `
+            <li class="track-item">
+              <div>
+                <strong>${t.name}</strong> - ${artist}
+                <br><small style="color:#666;">${album}</small>
+              </div>
+              <button onclick="playSingleTrack('${t.uri}')">▶ Play</button>
+            </li>
+          `;
+        });
+        listHTML += '</ul>';
+        container.innerHTML = listHTML;
+
+      } catch (err) {
+        console.error('Error fetching playlist tracks:', err);
+        container.innerHTML = '<p style="color:red;">Error loading folder tracks.</p>';
       }
     }
 
@@ -748,7 +861,6 @@ const scopes = [
       }
 
       document.querySelectorAll('.folder-item').forEach(el => el.classList.remove('active'));
-
       container.innerHTML = `<p>Searching Spotify for "${query}"...</p>`;
 
       try {
@@ -769,7 +881,7 @@ const scopes = [
 
         if (response.status === 401 || response.status === 403) {
           localStorage.clear();
-          container.innerHTML = `<p style="color:red;">Token expired. Please reconnect Spotify.</p>`;
+          container.innerHTML = `<p style="color:red;">Token expired or permissions invalid. Please reconnect Spotify.</p>`;
           document.getElementById('auth-section').style.display = 'block';
           document.getElementById('explorer-section').style.display = 'none';
           return;
@@ -869,72 +981,6 @@ const scopes = [
     document.getElementById('search-input').addEventListener('keypress', (e) => {
       if (e.key === 'Enter') performSpotifySearch();
     });
-
-    async function loadPlaylistTracks(playlistId, playlistName, playlistUri, element) {
-      const container = document.getElementById('view-container');
-      if (!container) return;
-
-      document.querySelectorAll('.folder-item').forEach(el => el.classList.remove('active'));
-      if (element) element.classList.add('active');
-
-      container.innerHTML = `<p>Opening folder "<strong>${playlistName}</strong>"...</p>`;
-
-      try {
-        const token = await getValidAccessToken();
-        if (!token) return;
-
-        // Querying playlist items endpoint with explicit limit
-        const response = await fetch(`https://api.spotify.com/v1/playlists/${playlistId}/tracks?limit=50`, {
-          headers: { 'Authorization': `Bearer ${token}` }
-        });
-
-        if (!response.ok) {
-          const errData = await response.json().catch(() => null);
-          const msg = errData?.error?.message || response.status;
-          container.innerHTML = `<p style="color:red;">Error loading playlist contents (${msg}).</p>`;
-          return;
-        }
-
-        const data = await response.json();
-        const items = data.items || [];
-
-        let headerHTML = `
-          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; padding-bottom:4px; border-bottom:1px solid #808080;">
-            <h4 style="margin:0;">📁 Folder: ${playlistName} (${items.length} tracks)</h4>
-            <button onclick="playPlaylistContext('${playlistUri}')">▶ Play Folder</button>
-          </div>
-        `;
-
-        if (items.length === 0) {
-          container.innerHTML = headerHTML + '<p>This folder is empty.</p>';
-          return;
-        }
-
-        let listHTML = headerHTML + '<ul style="list-style: none; padding: 0; margin: 0;">';
-        items.forEach(item => {
-          const t = item.track;
-          if (!t) return;
-          const artist = (t.artists && t.artists.length > 0) ? t.artists[0].name : 'Unknown Artist';
-          const album = t.album ? t.album.name : '';
-
-          listHTML += `
-            <li class="track-item">
-              <div>
-                <strong>${t.name}</strong> - ${artist}
-                <br><small style="color:#666;">${album}</small>
-              </div>
-              <button onclick="playSingleTrack('${t.uri}')">▶ Play</button>
-            </li>
-          `;
-        });
-        listHTML += '</ul>';
-        container.innerHTML = listHTML;
-
-      } catch (err) {
-        console.error('Error fetching playlist tracks:', err);
-        container.innerHTML = '<p style="color:red;">Error loading folder tracks.</p>';
-      }
-    }
 
     async function playPlaylistContext(contextUri) {
       if (!activeDeviceId) {
