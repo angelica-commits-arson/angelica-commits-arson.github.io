@@ -3,25 +3,74 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Retro IE Spotify Player</title>
+  <title>Retro Windows Desktop</title>
   <!-- Win98 Retro Styling Framework -->
   <link rel="stylesheet" href="https://unpkg.com/98.css">
   <!-- Spotify Web Playback SDK -->
   <script src="https://sdk.scdn.co/spotify-player.js"></script>
   <style>
-    body {
-      background-color: #008080;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      min-height: 100vh;
-      margin: 0;
-      font-family: 'Pixelated MS Sans Serif', Arial, sans-serif;
+    * {
+      box-sizing: border-box;
     }
 
+    body {
+      background-color: #008080; /* Classic Windows Teal Background */
+      margin: 0;
+      height: 100vh;
+      overflow: hidden;
+      font-family: 'Pixelated MS Sans Serif', Arial, sans-serif;
+      user-select: none;
+    }
+
+    /* Desktop Icons Area */
+    .desktop {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+      z-index: 1;
+    }
+
+    .desktop-icon {
+      width: 70px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      cursor: pointer;
+      color: white;
+      text-shadow: 1px 1px #000;
+      font-size: 11px;
+      text-align: center;
+    }
+
+    .desktop-icon img {
+      width: 32px;
+      height: 32px;
+      margin-bottom: 4px;
+    }
+
+    /* Draggable Window Wrapper */
     .window {
-      width: 680px;
-      max-width: 95vw;
+      position: absolute;
+      z-index: 10;
+    }
+
+    .window .title-bar {
+      cursor: move; /* Indicates draggable header */
+    }
+
+    #player-window {
+      width: 650px;
+      top: 50px;
+      left: 120px;
+    }
+
+    #clock-window {
+      width: 220px;
+      top: 100px;
+      left: 800px;
     }
 
     .address-bar-container {
@@ -35,9 +84,10 @@
     .browser-content {
       background: #ffffff;
       box-shadow: inset -1px -1px #fff, inset 1px 1px #0a0a0a, inset -2px -2px #dfdfdf, inset 2px 2px #808080;
-      height: 320px;
+      height: 300px;
       overflow-y: auto;
       padding: 12px;
+      color: black;
     }
 
     .track-item {
@@ -63,23 +113,67 @@
       padding-bottom: 4px;
       border-bottom: 1px solid #c0c0c0;
     }
+
+    .clock-display {
+      font-size: 28px;
+      font-weight: bold;
+      text-align: center;
+      background: #000;
+      color: #00ff00;
+      padding: 10px;
+      font-family: monospace;
+      border: 2px inset #dfdfdf;
+    }
+
+    /* Windows Taskbar */
+    .taskbar {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      width: 100%;
+      height: 30px;
+      background: #c0c0c0;
+      border-top: 2px solid #fff;
+      display: flex;
+      align-items: center;
+      padding: 2px 4px;
+      z-index: 100;
+    }
+
+    .taskbar-tray {
+      margin-left: auto;
+      border: 2px inset #fff;
+      padding: 2px 8px;
+      font-size: 11px;
+      background: #c0c0c0;
+    }
   </style>
 </head>
 <body>
 
-  <div class="window">
-    <!-- Window Title Bar -->
+  <!-- Desktop Icons -->
+  <div class="desktop">
+    <div class="desktop-icon" onclick="toggleWindow('player-window')">
+      <img src="https://win98icons.alexmeub.com/icons/png/internet_connection_wiz-0.png" alt="IE">
+      <span>Spotify IE</span>
+    </div>
+    <div class="desktop-icon" onclick="toggleWindow('clock-window')">
+      <img src="https://win98icons.alexmeub.com/icons/png/clock-0.png" alt="Clock">
+      <span>Clock</span>
+    </div>
+  </div>
+
+  <!-- 1. SPOTIFY PLAYER WINDOW -->
+  <div class="window" id="player-window">
     <div class="title-bar">
       <div class="title-bar-text">Internet Explorer - Retro Spotify Player</div>
       <div class="title-bar-controls">
-        <button aria-label="Minimize"></button>
-        <button aria-label="Maximize"></button>
-        <button aria-label="Close"></button>
+        <button aria-label="Minimize" onclick="toggleWindow('player-window')"></button>
+        <button aria-label="Close" onclick="toggleWindow('player-window')"></button>
       </div>
     </div>
 
     <div class="window-body">
-      <!-- Retro Address Bar -->
       <div class="address-bar-container">
         <button>Back</button>
         <button>Forward</button>
@@ -87,7 +181,6 @@
         <input id="address" type="text" value="https://spotify.local/player" style="flex-grow: 1;" readonly>
       </div>
 
-      <!-- Blank Space / Main Display Area -->
       <div class="browser-content" id="content-area">
         <div id="auth-section">
           <p>Welcome! Click below to authorize your Spotify Premium account.</p>
@@ -100,7 +193,6 @@
         </div>
       </div>
 
-      <!-- Playback Controls -->
       <div class="field-row player-controls">
         <button id="play-btn">▶ Play</button>
         <button id="pause-btn">⏸ Pause</button>
@@ -109,6 +201,28 @@
         <span style="font-size: 11px;">Status: <strong id="device-status">Disconnected</strong></span>
       </div>
     </div>
+  </div>
+
+  <!-- 2. CLOCK GADGET WINDOW -->
+  <div class="window" id="clock-window">
+    <div class="title-bar">
+      <div class="title-bar-text">Clock</div>
+      <div class="title-bar-controls">
+        <button aria-label="Close" onclick="toggleWindow('clock-window')"></button>
+      </div>
+    </div>
+    <div class="window-body">
+      <div class="clock-display" id="gadget-clock">00:00:00 AM</div>
+    </div>
+  </div>
+
+  <!-- Taskbar -->
+  <div class="taskbar">
+    <button style="font-weight: bold; display: flex; align-items: center; gap: 4px;">
+      <img src="https://win98icons.alexmeub.com/icons/png/windows-0.png" width="14" height="14">
+      Start
+    </button>
+    <div class="taskbar-tray" id="tray-clock">00:00 AM</div>
   </div>
 
   <script>
@@ -120,7 +234,65 @@
     let spotifyPlayer = null;
     let activeDeviceId = null;
 
-    // Helper utilities for PKCE Auth Flow
+    // ==========================================
+    // WINDOW DRAGGING & TOGGLE LOGIC
+    // ==========================================
+    function makeDraggable(windowEl) {
+      const header = windowEl.querySelector('.title-bar');
+      let posX = 0, posY = 0, mouseX = 0, mouseY = 0;
+
+      header.onmousedown = (e) => {
+        e.preventDefault();
+        mouseX = e.clientX;
+        mouseY = e.clientY;
+        
+        // Bring window to front
+        document.querySelectorAll('.window').forEach(w => w.style.zIndex = 10);
+        windowEl.style.zIndex = 20;
+
+        document.onmousemove = (e) => {
+          e.preventDefault();
+          posX = mouseX - e.clientX;
+          posY = mouseY - e.clientY;
+          mouseX = e.clientX;
+          mouseY = e.clientY;
+          windowEl.style.top = (windowEl.offsetTop - posY) + "px";
+          windowEl.style.left = (windowEl.offsetLeft - posX) + "px";
+        };
+
+        document.onmouseup = () => {
+          document.onmousemove = null;
+          document.onmouseup = null;
+        };
+      };
+    }
+
+    // Attach drag behavior to all windows
+    document.querySelectorAll('.window').forEach(makeDraggable);
+
+    function toggleWindow(id) {
+      const el = document.getElementById(id);
+      if (el.style.display === 'none') {
+        el.style.display = 'block';
+      } else {
+        el.style.display = 'none';
+      }
+    }
+
+    // Live Clock Update
+    function updateClocks() {
+      const now = new Date();
+      const timeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+      const trayStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      document.getElementById('gadget-clock').innerText = timeStr;
+      document.getElementById('tray-clock').innerText = trayStr;
+    }
+    setInterval(updateClocks, 1000);
+    updateClocks();
+
+    // ==========================================
+    // SPOTIFY PKCE AUTH & API LOGIC
+    // ==========================================
     const generateRandomString = (length) => {
       const possible = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
       const values = crypto.getRandomValues(new Uint8Array(length));
@@ -135,12 +307,9 @@
 
     const base64encode = (input) => {
       return btoa(String.fromCharCode.apply(null, new Uint8Array(input)))
-        .replace(/=/g, '')
-        .replace(/\+/g, '-')
-        .replace(/\//g, '_');
+        .replace(/=/g, '').replace(/\+/g, '-').replace(/\//g, '_');
     };
 
-    // Initiate PKCE Login
     async function redirectToSpotifyAuth() {
       const codeVerifier = generateRandomString(64);
       const hashed = await sha256(codeVerifier);
@@ -160,7 +329,6 @@
       window.location.href = `https://accounts.spotify.com/authorize?${params.toString()}`;
     }
 
-    // Retrieve Token using Auth Code
     async function fetchTokens(code) {
       const codeVerifier = localStorage.getItem('code_verifier');
 
@@ -182,7 +350,6 @@
       return data.access_token;
     }
 
-    // Refresh Token Method
     async function refreshAccessToken() {
       const refreshToken = localStorage.getItem('refresh_token');
       if (!refreshToken) return null;
@@ -227,7 +394,6 @@
       return null;
     }
 
-    // Spotify SDK Initialization
     window.onSpotifyWebPlaybackSDKReady = async () => {
       const token = await getValidAccessToken();
       if (!token) return;
@@ -257,7 +423,6 @@
       spotifyPlayer.connect();
     };
 
-    // Load recent tracks into the IE viewport
     async function loadRecentTracks() {
       const token = await getValidAccessToken();
       const response = await fetch('https://api.spotify.com/v1/me/player/recently-played?limit=15', {
@@ -299,9 +464,8 @@
       });
     }
 
-    // Controls and Event Listeners
+    // Button Listeners
     document.getElementById('login-btn').addEventListener('click', redirectToSpotifyAuth);
-    
     document.getElementById('logout-btn').addEventListener('click', () => {
       localStorage.clear();
       window.location.reload();
@@ -311,7 +475,6 @@
     document.getElementById('pause-btn').addEventListener('click', () => spotifyPlayer && spotifyPlayer.pause());
     document.getElementById('next-btn').addEventListener('click', () => spotifyPlayer && spotifyPlayer.nextTrack());
 
-    // Page Load App Initialization
     async function initApp() {
       const urlParams = new URLSearchParams(window.location.search);
       const code = urlParams.get('code');
