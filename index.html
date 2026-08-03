@@ -444,6 +444,9 @@
     const REDIRECT_URI = 'https://angelica-commits-arson.github.io/'; 
     const SCOPES = 'user-read-recently-played user-library-read user-modify-playback-state streaming user-read-playback-state playlist-read-private playlist-read-collaborative';
 
+    // Live Ergast Mirror (Jolpica API Endpoint)
+    const F1_API_BASE = 'https://api.jolpica.net/ergast/f1';
+
     let spotifyPlayer = null;
     let activeDeviceId = null;
     let currentPath = 'root'; 
@@ -471,13 +474,13 @@
     }
 
     // ==========================================
-    // F1 ARCHIVE APP LOGIC (Ergast API)
+    // F1 ARCHIVE APP LOGIC (Jolpica Mirror)
     // ==========================================
     function initF1App() {
       const yearSelect = document.getElementById('f1-year-select');
       const currentYear = new Date().getFullYear();
       
-      // Populate years 1999 to current
+      yearSelect.innerHTML = '';
       for (let y = currentYear; y >= 1999; y--) {
         const opt = document.createElement('option');
         opt.value = y;
@@ -494,7 +497,7 @@
       raceSelect.innerHTML = '<option value="">Loading races...</option>';
 
       try {
-        const response = await fetch(`https://ergast.com/api/f1/${year}.json`);
+        const response = await fetch(`${F1_API_BASE}/${year}.json`);
         const data = await response.json();
         const races = data.MRData.RaceTable.Races;
 
@@ -519,10 +522,10 @@
 
       if (!round) return;
 
-      container.innerHTML = '<p>Fetching race results from satellite...</p>';
+      container.innerHTML = '<p>Fetching race results...</p>';
 
       try {
-        const response = await fetch(`https://ergast.com/api/f1/${year}/${round}/results.json`);
+        const response = await fetch(`${F1_API_BASE}/${year}/${round}/results.json`);
         const data = await response.json();
         const race = data.MRData.RaceTable.Races[0];
 
@@ -575,7 +578,7 @@
       container.innerHTML = `<p>Loading ${year} Drivers' Championship Standings...</p>`;
 
       try {
-        const response = await fetch(`https://ergast.com/api/f1/${year}/driverStandings.json`);
+        const response = await fetch(`${F1_API_BASE}/${year}/driverStandings.json`);
         const data = await response.json();
         const standingsList = data.MRData.StandingsTable.StandingsLists[0];
 
@@ -813,13 +816,17 @@
 
       try {
         const token = await getValidAccessToken();
+        if (!token) {
+          container.innerHTML = '<p>Please re-connect Spotify.</p>';
+          return;
+        }
+
         const response = await fetch('https://api.spotify.com/v1/me/playlists?limit=50', {
           headers: { Authorization: `Bearer ${token}` }
         });
 
-        if (response.status === 401 || response.status === 403) {
-          localStorage.clear();
-          container.innerHTML = '<p>Session expired. <button onclick="redirectToSpotifyAuth()">Re-connect Spotify</button></p>';
+        if (!response.ok) {
+          container.innerHTML = '<p>Error reading playlists. Try re-connecting.</p>';
           return;
         }
 
@@ -853,7 +860,7 @@
           container.innerHTML = '<p>No playlists found in your account.</p>';
         }
       } catch (err) {
-        container.innerHTML = '<p>Error loading playlists. Please re-connect Spotify.</p>';
+        container.innerHTML = '<p>Error loading playlists.</p>';
       }
     }
 
@@ -870,12 +877,13 @@
         });
 
         const data = await response.json();
-        const tracksList = (data.items || []).filter(item => item && item.track);
+        
+        // Flexible track extraction (handles item.track or direct item)
+        const tracksList = (data.items || []).map(item => item.track || item).filter(track => track && track.name);
 
         if (tracksList.length > 0) {
           let listHTML = '<ul style="list-style: none; padding: 0; margin: 0;">';
-          tracksList.forEach((item, index) => {
-            const track = item.track;
+          tracksList.forEach((track, index) => {
             const artistName = track.artists && track.artists.length > 0 ? track.artists[0].name : 'Unknown Artist';
             listHTML += `
               <li class="track-item">
