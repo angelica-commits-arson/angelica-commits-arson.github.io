@@ -476,173 +476,173 @@
     // ==========================================
     // F1 ARCHIVE APP LOGIC (WITH FALLBACK)
     // ==========================================
-    async function fetchF1Data(endpoint) {
-      try {
-        const res = await fetch(`${F1_PRIMARY_API}${endpoint}`);
-        if (!res.ok) throw new Error('Primary API error');
-        return await res.json();
-      } catch (err) {
-        const fallbackRes = await fetch(`${F1_FALLBACK_API}${endpoint}`);
-        if (!fallbackRes.ok) throw new Error('Fallback API error');
-        return await fallbackRes.json();
-      }
+  const F1_BASE_API = 'https://api.jolpica.net/ergast/f1';
+
+async function fetchF1Data(endpoint) {
+  const url = `${F1_BASE_API}${endpoint}`;
+  const res = await fetch(url);
+  if (!res.ok) {
+    throw new Error(`F1 API Error ${res.status}: ${res.statusText}`);
+  }
+  return await res.json();
+}
+
+function initF1App() {
+  const yearSelect = document.getElementById('f1-year-select');
+  if (!yearSelect) return;
+  
+  const currentYear = new Date().getFullYear();
+  yearSelect.innerHTML = '';
+  
+  for (let y = currentYear; y >= 1999; y--) {
+    const opt = document.createElement('option');
+    opt.value = y;
+    opt.innerText = y;
+    yearSelect.appendChild(opt);
+  }
+
+  onF1YearChange();
+}
+
+async function onF1YearChange() {
+  const yearSelect = document.getElementById('f1-year-select');
+  const raceSelect = document.getElementById('f1-race-select');
+  if (!yearSelect || !raceSelect) return;
+
+  const year = yearSelect.value;
+  raceSelect.innerHTML = '<option value="">Loading schedule...</option>';
+
+  try {
+    const data = await fetchF1Data(`/${year}/races.json`);
+    const races = data?.MRData?.RaceTable?.Races || [];
+
+    raceSelect.innerHTML = '';
+    if (races.length === 0) {
+      raceSelect.innerHTML = '<option value="">No races found</option>';
+      return;
     }
 
-    function initF1App() {
-      const yearSelect = document.getElementById('f1-year-select');
-      const currentYear = new Date().getFullYear();
-      
-      yearSelect.innerHTML = '';
-      for (let y = currentYear; y >= 1999; y--) {
-        const opt = document.createElement('option');
-        opt.value = y;
-        opt.innerText = y;
-        yearSelect.appendChild(opt);
-      }
+    races.forEach(race => {
+      const opt = document.createElement('option');
+      opt.value = race.round;
+      opt.innerText = `R${race.round}: ${race.raceName}`;
+      raceSelect.appendChild(opt);
+    });
 
-      onF1YearChange();
+    loadF1RaceResults();
+  } catch (err) {
+    console.error('F1 Schedule Error:', err);
+    raceSelect.innerHTML = '<option value="">Error loading schedule</option>';
+  }
+}
+
+async function loadF1RaceResults() {
+  const year = document.getElementById('f1-year-select').value;
+  const round = document.getElementById('f1-race-select').value;
+  const container = document.getElementById('f1-results-container');
+
+  if (!round) return;
+  container.innerHTML = '<p>Fetching race results...</p>';
+
+  try {
+    const data = await fetchF1Data(`/${year}/${round}/results.json`);
+    const race = data?.MRData?.RaceTable?.Races?.[0];
+
+    if (!race || !race.Results) {
+      container.innerHTML = '<p>No results found for this race.</p>';
+      return;
     }
 
-    async function onF1YearChange() {
-      const year = document.getElementById('f1-year-select').value;
-      const raceSelect = document.getElementById('f1-race-select');
-      raceSelect.innerHTML = '<option value="">Loading races...</option>';
+    let html = `
+      <h4 style="margin-top:0; margin-bottom: 6px;">${race.season} ${race.raceName} (${race.Circuit?.circuitName || 'Circuit'})</h4>
+      <table class="f1-table">
+        <thead>
+          <tr>
+            <th>Pos</th>
+            <th>Driver</th>
+            <th>Constructor</th>
+            <th>Laps</th>
+            <th>Time / Status</th>
+            <th>Points</th>
+          </tr>
+        </thead>
+        <tbody>
+    `;
 
-      try {
-        const data = await fetchF1Data(`/${year}.json`);
-        const races = data.MRData.RaceTable.Races;
+    race.Results.forEach(r => {
+      const driverName = r.Driver ? `${r.Driver.givenName} ${r.Driver.familyName}` : 'Unknown';
+      const status = r.Time ? r.Time.time : r.status;
+      const team = r.Constructor ? r.Constructor.name : 'N/A';
+      html += `
+        <tr>
+          <td><strong>${r.position}</strong></td>
+          <td>${driverName}</td>
+          <td>${team}</td>
+          <td>${r.laps}</td>
+          <td>${status}</td>
+          <td>${r.points}</td>
+        </tr>
+      `;
+    });
 
-        raceSelect.innerHTML = '';
-        if (!races || races.length === 0) {
-          raceSelect.innerHTML = '<option value="">No races found</option>';
-          return;
-        }
+    html += '</tbody></table>';
+    container.innerHTML = html;
+  } catch (err) {
+    console.error('F1 Results Error:', err);
+    container.innerHTML = '<p>Error loading race results.</p>';
+  }
+}
 
-        races.forEach(race => {
-          const opt = document.createElement('option');
-          opt.value = race.round;
-          opt.innerText = `R${race.round}: ${race.raceName}`;
-          raceSelect.appendChild(opt);
-        });
+async function loadF1Standings() {
+  const year = document.getElementById('f1-year-select').value;
+  const container = document.getElementById('f1-results-container');
+  container.innerHTML = `<p>Loading ${year} Drivers' Championship Standings...</p>`;
 
-        loadF1RaceResults();
-      } catch (err) {
-        console.error('F1 Schedule Error:', err);
-        raceSelect.innerHTML = '<option value="">Error loading schedule</option>';
-      }
+  try {
+    const data = await fetchF1Data(`/${year}/driverStandings.json`);
+    const standingsList = data?.MRData?.StandingsTable?.StandingsLists?.[0];
+
+    if (!standingsList || !standingsList.DriverStandings) {
+      container.innerHTML = `<p>No standings data available for ${year}.</p>`;
+      return;
     }
 
-    async function loadF1RaceResults() {
-      const year = document.getElementById('f1-year-select').value;
-      const round = document.getElementById('f1-race-select').value;
-      const container = document.getElementById('f1-results-container');
+    let html = `
+      <h4 style="margin-top:0; margin-bottom: 6px;">🏆 ${year} Drivers' World Championship Standings</h4>
+      <table class="f1-table">
+        <thead>
+          <tr>
+            <th>Pos</th>
+            <th>Driver</th>
+            <th>Constructor</th>
+            <th>Wins</th>
+            <th>Points</th>
+          </tr>
+        </thead>
+        <tbody>
+    `;
 
-      if (!round) return;
+    standingsList.DriverStandings.forEach(s => {
+      const driverName = s.Driver ? `${s.Driver.givenName} ${s.Driver.familyName}` : 'Unknown';
+      const team = (s.Constructors && s.Constructors[0]) ? s.Constructors[0].name : 'N/A';
+      html += `
+        <tr>
+          <td><strong>${s.position}</strong></td>
+          <td>${driverName}</td>
+          <td>${team}</td>
+          <td>${s.wins}</td>
+          <td><strong>${s.points}</strong></td>
+        </tr>
+      `;
+    });
 
-      container.innerHTML = '<p>Fetching race results...</p>';
-
-      try {
-        const data = await fetchF1Data(`/${year}/${round}/results.json`);
-        const race = data.MRData.RaceTable.Races[0];
-
-        if (!race || !race.Results) {
-          container.innerHTML = '<p>No results found for this race.</p>';
-          return;
-        }
-
-        let html = `
-          <h4 style="margin-top:0; margin-bottom: 6px;">${race.season} ${race.raceName} (${race.Circuit.circuitName})</h4>
-          <table class="f1-table">
-            <thead>
-              <tr>
-                <th>Pos</th>
-                <th>Driver</th>
-                <th>Constructor</th>
-                <th>Laps</th>
-                <th>Time / Status</th>
-                <th>Points</th>
-              </tr>
-            </thead>
-            <tbody>
-        `;
-
-        race.Results.forEach(r => {
-          const driverName = r.Driver ? `${r.Driver.givenName} ${r.Driver.familyName}` : 'Unknown';
-          const status = r.Time ? r.Time.time : r.status;
-          const team = r.Constructor ? r.Constructor.name : 'N/A';
-          html += `
-            <tr>
-              <td><strong>${r.position}</strong></td>
-              <td>${driverName}</td>
-              <td>${team}</td>
-              <td>${r.laps}</td>
-              <td>${status}</td>
-              <td>${r.points}</td>
-            </tr>
-          `;
-        });
-
-        html += '</tbody></table>';
-        container.innerHTML = html;
-      } catch (err) {
-        console.error('F1 Results Error:', err);
-        container.innerHTML = '<p>Error loading race results. Check internet connection/CORS permissions.</p>';
-      }
-    }
-
-    async function loadF1Standings() {
-      const year = document.getElementById('f1-year-select').value;
-      const container = document.getElementById('f1-results-container');
-      container.innerHTML = `<p>Loading ${year} Drivers' Championship Standings...</p>`;
-
-      try {
-        const data = await fetchF1Data(`/${year}/driverStandings.json`);
-        const standingsList = data.MRData.StandingsTable.StandingsLists[0];
-
-        if (!standingsList || !standingsList.DriverStandings) {
-          container.innerHTML = `<p>No standings data available for ${year}.</p>`;
-          return;
-        }
-
-        let html = `
-          <h4 style="margin-top:0; margin-bottom: 6px;">🏆 ${year} Drivers' World Championship Standings</h4>
-          <table class="f1-table">
-            <thead>
-              <tr>
-                <th>Pos</th>
-                <th>Driver</th>
-                <th>Constructor</th>
-                <th>Wins</th>
-                <th>Points</th>
-              </tr>
-            </thead>
-            <tbody>
-        `;
-
-        standingsList.DriverStandings.forEach(s => {
-          const driverName = s.Driver ? `${s.Driver.givenName} ${s.Driver.familyName}` : 'Unknown';
-          const team = (s.Constructors && s.Constructors[0]) ? s.Constructors[0].name : 'N/A';
-          html += `
-            <tr>
-              <td><strong>${s.position}</strong></td>
-              <td>${driverName}</td>
-              <td>${team}</td>
-              <td>${s.wins}</td>
-              <td><strong>${s.points}</strong></td>
-            </tr>
-          `;
-        });
-
-        html += '</tbody></table>';
-        container.innerHTML = html;
-      } catch (err) {
-        console.error('F1 Standings Error:', err);
-        container.innerHTML = '<p>Error loading championship standings.</p>';
-      }
-    }
-
-    // Initialize F1 App
-    initF1App();
+    html += '</tbody></table>';
+    container.innerHTML = html;
+  } catch (err) {
+    console.error('F1 Standings Error:', err);
+    container.innerHTML = '<p>Error loading championship standings.</p>';
+  }
+}
 
     // ==========================================
     // MINESWEEPER LOGIC
@@ -883,57 +883,65 @@
     }
 
     async function loadPlaylistTracks(playlistId, playlistUri, playlistName) {
-      currentPath = 'playlist_contents';
-      setAddressPath(`Playlists\\${playlistName}`);
-      const container = document.getElementById('view-container');
-      container.innerHTML = '<p>Opening playlist...</p>';
+  currentPath = 'playlist_contents';
+  setAddressPath(`Playlists\\${playlistName}`);
+  const container = document.getElementById('view-container');
+  container.innerHTML = '<p>Opening playlist...</p>';
 
-      try {
-        const token = await getValidAccessToken();
-        const response = await fetch(`https://api.spotify.com/v1/playlists/${playlistId}/tracks?limit=100`, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
-
-        if (!response.ok) {
-          container.innerHTML = '<p>Error fetching playlist items. Token may be expired.</p>';
-          return;
-        }
-
-        const data = await response.json();
-        const items = data.items || [];
-        const validTracks = [];
-
-        items.forEach(item => {
-          const t = item.track || item;
-          if (t && t.name) {
-            validTracks.push({
-              name: t.name,
-              artist: (t.artists && t.artists.length > 0) ? t.artists[0].name : 'Unknown Artist',
-              uri: t.uri
-            });
-          }
-        });
-
-        if (validTracks.length > 0) {
-          let listHTML = '<ul style="list-style: none; padding: 0; margin: 0;">';
-          validTracks.forEach((track, index) => {
-            listHTML += `
-              <li class="track-item">
-                <span><strong>${track.name}</strong> - ${track.artist}</span>
-                <button onclick="playContext('${playlistUri}', ${index})">Play</button>
-              </li>
-            `;
-          });
-          listHTML += '</ul>';
-          container.innerHTML = listHTML;
-        } else {
-          container.innerHTML = '<p>No playable tracks found in this playlist.</p>';
-        }
-      } catch (err) {
-        console.error('Playlist Track Error:', err);
-        container.innerHTML = '<p>Error loading playlist tracks.</p>';
-      }
+  try {
+    const token = await getValidAccessToken();
+    if (!token) {
+      container.innerHTML = '<p>Session expired. Please click Disconnect and log back in.</p>';
+      return;
     }
+
+    // Notice the addition of ?market=from_token (Required by Spotify API)
+    const response = await fetch(`https://api.spotify.com/v1/playlists/${playlistId}/tracks?market=from_token&limit=100`, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+
+    if (!response.ok) {
+      const errData = await response.json().catch(() => ({}));
+      console.error('Spotify API Error:', response.status, errData);
+      container.innerHTML = `<p>Error fetching tracks (${response.status}). Token may lack permissions or playlist is restricted.</p>`;
+      return;
+    }
+
+    const data = await response.json();
+    const items = data.items || [];
+    const validTracks = [];
+
+    items.forEach(item => {
+      const t = item.track;
+      if (t && t.name && t.uri) {
+        validTracks.push({
+          name: t.name,
+          artist: (t.artists && t.artists.length > 0) ? t.artists[0].name : 'Unknown Artist',
+          uri: t.uri
+        });
+      }
+    });
+
+    if (validTracks.length > 0) {
+      let listHTML = '<ul style="list-style: none; padding: 0; margin: 0;">';
+      validTracks.forEach((track, index) => {
+        listHTML += `
+          <li class="track-item">
+            <span><strong>${track.name}</strong> - ${track.artist}</span>
+            <button onclick="playContext('${playlistUri}', ${index})">Play</button>
+          </li>
+        `;
+      });
+      listHTML += '</ul>';
+      container.innerHTML = listHTML;
+    } else {
+      container.innerHTML = '<p>No playable tracks found in this playlist.</p>';
+    }
+  } catch (err) {
+    console.error('Playlist Track Exception:', err);
+    container.innerHTML = '<p>Error loading playlist tracks.</p>';
+  }
+}
 
     async function loadRecentTracks() {
       currentPath = 'recent';
