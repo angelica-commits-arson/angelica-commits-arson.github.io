@@ -543,7 +543,10 @@
   <script>
     const CLIENT_ID = '4692b9fae514427c9a94e6bde0d8e390'; 
     const REDIRECT_URI = 'https://angelica-commits-arson.github.io/'; 
+    
+    // Explicitly scope all playlist and playback scopes to prevent 403 Forbidden errors
     const SCOPES = 'streaming user-read-email user-read-private user-modify-playback-state user-read-playback-state playlist-read-private playlist-read-collaborative playlist-modify-public playlist-modify-private';
+
     let spotifyPlayer = null;
     let activeDeviceId = null;
     let userPlaylistsCache = [];
@@ -635,7 +638,6 @@
             return isEntrantTable && isNotStandings;
           });
 
-          // Fallback constructor table if strictly entry list table isn't matched
           if (!targetTable) {
             targetTable = tables.find(t => {
               const txt = t.innerText.toLowerCase();
@@ -759,8 +761,10 @@
           const errData = await response.json().catch(() => null);
           const errorMsg = errData?.error?.message || `HTTP ${response.status}`;
           
-          if (response.status === 401 || response.status === 403) {
-            container.innerHTML = `<p style="color:red;">Authorization error (${errorMsg}). Please click "Disconnect / Reset Session" to sign in again.</p>`;
+          if (response.status === 403) {
+            container.innerHTML = `<p style="color:red;"><strong>403 Forbidden Error:</strong> Cannot access playlist contents.<br><br>• If this is a private or collaborative playlist, click <strong>Disconnect / Reset Session</strong> to re-authenticate with full permissions.<br>• If your Spotify account is Free, note that Web Playback requires Spotify Premium.<br>• Spotify Desktop "Folders" cannot be opened directly via Web API.</p>`;
+          } else if (response.status === 401) {
+            container.innerHTML = `<p style="color:red;">Session expired. Please click "Disconnect / Reset Session" to sign in again.</p>`;
           } else {
             container.innerHTML = `<p style="color:red;">Could not load folder contents: ${errorMsg}</p>`;
           }
@@ -1278,19 +1282,26 @@
       const refreshToken = localStorage.getItem('refresh_token');
       if (!refreshToken) return null;
 
-      const response = await fetch('https://accounts.spotify.com/api/token', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: new URLSearchParams({
-          client_id: CLIENT_ID,
-          grant_type: 'refresh_token',
-          refresh_token: refreshToken,
-        }),
-      });
+      try {
+        const response = await fetch('https://accounts.spotify.com/api/token', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          body: new URLSearchParams({
+            client_id: CLIENT_ID,
+            grant_type: 'refresh_token',
+            refresh_token: refreshToken,
+          }),
+        });
 
-      const data = await response.json();
-      saveTokens(data);
-      return data.access_token;
+        const data = await response.json();
+        if (data.access_token) {
+          saveTokens(data);
+          return data.access_token;
+        }
+      } catch (e) {
+        console.error('Error refreshing access token:', e);
+      }
+      return null;
     }
 
     function saveTokens(data) {
@@ -1304,24 +1315,21 @@
     }
 
     async function getValidAccessToken() {
-  const expiresAt = localStorage.getItem('expires_at');
-  const accessToken = localStorage.getItem('access_token');
+      const expiresAt = localStorage.getItem('expires_at');
+      const accessToken = localStorage.getItem('access_token');
 
-  // Check if current access token is valid and not expired
-  if (accessToken && Date.now() < Number(expiresAt)) {
-    return accessToken;
-  }
+      if (accessToken && Date.now() < Number(expiresAt)) {
+        return accessToken;
+      }
 
-  // Attempt to fetch a new access token using refresh_token
-  if (localStorage.getItem('refresh_token')) {
-    const newToken = await refreshAccessToken();
-    if (newToken) return newToken;
-  }
+      if (localStorage.getItem('refresh_token')) {
+        const freshToken = await refreshAccessToken();
+        if (freshToken) return freshToken;
+      }
 
-  // If no valid tokens exist, purge storage so stale tokens aren't sent
-  localStorage.clear();
-  return null;
-}
+      localStorage.clear();
+      return null;
+    }
 
     window.onSpotifyWebPlaybackSDKReady = async () => {
       const token = await getValidAccessToken();
