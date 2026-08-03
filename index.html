@@ -563,30 +563,26 @@
   try {
     const token = await getValidAccessToken();
     if (!token) {
-      container.innerHTML = '<p style="color: red;">No active session. Click "Connect Spotify" below to authenticate.</p>';
+      container.innerHTML = '<p style="color: red;">No active session. Click "Connect Spotify" to authenticate.</p>';
       document.getElementById('auth-section').style.display = 'block';
       document.getElementById('explorer-section').style.display = 'none';
       return;
     }
 
-    // Strictly enforce an integer between 1 and 50
-    const rawLimit = 20; // Or parse from a user input field: parseInt(inputLimit, 10)
-    const searchLimit = Math.min(Math.max(Math.floor(rawLimit) || 20, 1), 50);
-
-    // Build URL directly to prevent duplicate keys or search params stringifying issues
-    const endpoint = `https://api.spotify.com/v1/search?q=${encodeURIComponent(query)}&type=track&limit=${searchLimit}`;
+    // OMIT limit completely -> Spotify defaults to 20 automatically
+    const endpoint = `https://api.spotify.com/v1/search?q=${encodeURIComponent(query)}&type=track`;
 
     const response = await fetch(endpoint, {
       method: 'GET',
       headers: { 
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json'
+        'Authorization': `Bearer ${token}`
+        // Do NOT include 'Content-Type': 'application/json' on GET requests
       }
     });
 
     if (response.status === 401 || response.status === 403) {
       localStorage.clear();
-      container.innerHTML = `<p style="color:red;">Token expired or invalid. Please reconnect Spotify.</p>`;
+      container.innerHTML = `<p style="color:red;">Token expired. Please reconnect Spotify.</p>`;
       document.getElementById('auth-section').style.display = 'block';
       document.getElementById('explorer-section').style.display = 'none';
       return;
@@ -594,6 +590,7 @@
 
     if (!response.ok) {
       const errData = await response.json().catch(() => null);
+      console.error('Spotify API Error Response:', errData);
       const detail = errData?.error?.message || `HTTP ${response.status}`;
       container.innerHTML = `<p style="color:red;">Search API Error: ${detail}</p>`;
       return;
@@ -603,7 +600,7 @@
     const tracks = data?.tracks?.items || [];
 
     if (tracks.length === 0) {
-      container.innerHTML = `<p>No tracks found for "${query}". Try another query.</p>`;
+      container.innerHTML = `<p>No tracks found for "${query}". Try another term.</p>`;
       return;
     }
 
@@ -627,10 +624,9 @@
 
   } catch (err) {
     console.error('Spotify Search Exception:', err);
-    container.innerHTML = '<p style="color:red;">Error executing search. Check browser console.</p>';
+    container.innerHTML = '<p style="color:red;">Error executing search. Check console.</p>';
   }
 }
-
     // ==========================================
     // MINESWEEPER LOGIC
     // ==========================================
