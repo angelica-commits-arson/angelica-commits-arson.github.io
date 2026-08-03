@@ -544,7 +544,6 @@
     const CLIENT_ID = '4692b9fae514427c9a94e6bde0d8e390'; 
     const REDIRECT_URI = 'https://angelica-commits-arson.github.io/'; 
     
-    // Explicitly scope all playlist and playback scopes to prevent 403 Forbidden errors
     const SCOPES = 'streaming user-read-email user-read-private user-modify-playback-state user-read-playback-state playlist-read-private playlist-read-collaborative playlist-modify-public playlist-modify-private';
 
     let spotifyPlayer = null;
@@ -620,7 +619,6 @@
         const tables = Array.from(doc.querySelectorAll('table'));
 
         if (viewType === 'schedule') {
-          // Race Calendar / Grand Prix Results
           targetTable = tables.find(t => {
             const txt = t.innerText.toLowerCase();
             return (txt.includes('grand prix') || txt.includes('circuit') || txt.includes('date')) &&
@@ -628,7 +626,6 @@
                    !txt.includes('constructors\' championship') && !txt.includes('drivers\' championship');
           });
         } else if (viewType === 'teams') {
-          // Teams & Entrants Table Parsing
           targetTable = tables.find(t => {
             const txt = t.innerText.toLowerCase();
             const caption = t.querySelector('caption')?.innerText.toLowerCase() || '';
@@ -645,7 +642,6 @@
             });
           }
         } else if (viewType === 'drivers') {
-          // Drivers Championship Table Parsing
           targetTable = tables.find(t => {
             const txt = t.innerText.toLowerCase();
             const caption = t.querySelector('caption')?.innerText.toLowerCase() || '';
@@ -695,11 +691,20 @@
 
       try {
         const token = await getValidAccessToken();
-        if (!token) return;
+        if (!token) {
+          showLoggedOutUI();
+          return;
+        }
 
         const response = await fetch('https://api.spotify.com/v1/me/playlists?limit=50', {
           headers: { 'Authorization': `Bearer ${token}` }
         });
+
+        if (response.status === 401) {
+          localStorage.clear();
+          showLoggedOutUI();
+          return;
+        }
 
         if (!response.ok) {
           sidebarList.innerHTML = '<li style="color: red; padding:4px;">Failed to load folders</li>';
@@ -745,7 +750,7 @@
       try {
         const token = await getValidAccessToken();
         if (!token) {
-          container.innerHTML = `<p style="color:red;">Session expired or token missing. Please click "Disconnect / Reset Session" and reconnect Spotify.</p>`;
+          showLoggedOutUI();
           return;
         }
 
@@ -761,10 +766,11 @@
           const errData = await response.json().catch(() => null);
           const errorMsg = errData?.error?.message || `HTTP ${response.status}`;
           
-          if (response.status === 403) {
-            container.innerHTML = `<p style="color:red;"><strong>403 Forbidden Error:</strong> Cannot access playlist contents.<br><br>• If this is a private or collaborative playlist, click <strong>Disconnect / Reset Session</strong> to re-authenticate with full permissions.<br>• If your Spotify account is Free, note that Web Playback requires Spotify Premium.<br>• Spotify Desktop "Folders" cannot be opened directly via Web API.</p>`;
-          } else if (response.status === 401) {
-            container.innerHTML = `<p style="color:red;">Session expired. Please click "Disconnect / Reset Session" to sign in again.</p>`;
+          if (response.status === 401) {
+            localStorage.clear();
+            showLoggedOutUI();
+          } else if (response.status === 403) {
+            container.innerHTML = `<p style="color:red;"><strong>403 Forbidden Error:</strong> Cannot access playlist contents.<br><br>• Click <strong>Disconnect / Reset Session</strong> to re-authenticate with full permissions.<br>• If your Spotify account is Free, Web Playback requires Spotify Premium.<br>• Spotify Desktop "Folders" cannot be opened directly via Web API.</p>`;
           } else {
             container.innerHTML = `<p style="color:red;">Could not load folder contents: ${errorMsg}</p>`;
           }
@@ -817,10 +823,7 @@
 
     async function createSpotifyPlaylist(name) {
       const token = await getValidAccessToken();
-      if (!token) {
-        alert('No active session. Please log in again.');
-        return null;
-      }
+      if (!token) return null;
 
       try {
         const createRes = await fetch('https://api.spotify.com/v1/me/playlists', {
@@ -840,12 +843,10 @@
           return await createRes.json();
         } else {
           const errData = await createRes.json().catch(() => null);
-          const detail = errData?.error?.message || `HTTP ${createRes.status}`;
-          alert(`Could not create folder: ${detail}`);
+          alert(`Could not create folder: ${errData?.error?.message || createRes.status}`);
         }
       } catch (err) {
         console.error('Failed to create playlist:', err);
-        alert('Error connecting to Spotify API.');
       }
       return null;
     }
@@ -878,9 +879,7 @@
       try {
         const token = await getValidAccessToken();
         if (!token) {
-          container.innerHTML = '<p style="color: red;">No active session. Click "Connect Spotify" to authenticate.</p>';
-          document.getElementById('auth-section').style.display = 'block';
-          document.getElementById('explorer-section').style.display = 'none';
+          showLoggedOutUI();
           return;
         }
 
@@ -891,18 +890,15 @@
           headers: { 'Authorization': `Bearer ${token}` }
         });
 
-        if (response.status === 401 || response.status === 403) {
+        if (response.status === 401) {
           localStorage.clear();
-          container.innerHTML = `<p style="color:red;">Token expired or permissions invalid. Please reconnect Spotify.</p>`;
-          document.getElementById('auth-section').style.display = 'block';
-          document.getElementById('explorer-section').style.display = 'none';
+          showLoggedOutUI();
           return;
         }
 
         if (!response.ok) {
           const errData = await response.json().catch(() => null);
-          const detail = errData?.error?.message || `HTTP ${response.status}`;
-          container.innerHTML = `<p style="color:red;">Search API Error: ${detail}</p>`;
+          container.innerHTML = `<p style="color:red;">Search API Error: ${errData?.error?.message || response.status}</p>`;
           return;
         }
 
@@ -973,9 +969,7 @@
             'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json'
           },
-          body: JSON.stringify({
-            uris: [trackUri]
-          })
+          body: JSON.stringify({ uris: [trackUri] })
         });
 
         if (response.ok) {
@@ -986,7 +980,6 @@
         }
       } catch (err) {
         console.error('Error adding track to playlist:', err);
-        alert('Error connecting to Spotify API.');
       }
     }
 
@@ -1000,6 +993,7 @@
         return;
       }
       const token = await getValidAccessToken();
+      if (!token) return;
 
       await fetch(`https://api.spotify.com/v1/me/player/play?device_id=${activeDeviceId}`, {
         method: 'PUT',
@@ -1220,6 +1214,18 @@
     // ==========================================
     // SPOTIFY PKCE AUTH & SDK LOGIC
     // ==========================================
+    function showLoggedOutUI() {
+      document.getElementById('auth-section').style.display = 'block';
+      document.getElementById('explorer-section').style.display = 'none';
+      document.getElementById('device-status').innerText = 'Offline';
+      document.getElementById('now-playing-title').innerText = 'Status: Disconnected';
+    }
+
+    function showLoggedInUI() {
+      document.getElementById('auth-section').style.display = 'none';
+      document.getElementById('explorer-section').style.display = 'block';
+    }
+
     const generateRandomString = (length) => {
       const possible = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
       const values = crypto.getRandomValues(new Uint8Array(length));
@@ -1273,9 +1279,15 @@
       });
 
       const data = await response.json();
-      saveTokens(data);
-      window.history.replaceState({}, document.title, window.location.origin + window.location.pathname);
-      return data.access_token;
+      if (data.access_token) {
+        saveTokens(data);
+        window.history.replaceState({}, document.title, window.location.origin + window.location.pathname);
+        return data.access_token;
+      } else {
+        console.error('Token fetch error:', data);
+        localStorage.clear();
+        return null;
+      }
     }
 
     async function refreshAccessToken() {
@@ -1290,6 +1302,7 @@
             client_id: CLIENT_ID,
             grant_type: 'refresh_token',
             refresh_token: refreshToken,
+            client_id: CLIENT_ID
           }),
         });
 
@@ -1333,13 +1346,16 @@
 
     window.onSpotifyWebPlaybackSDKReady = async () => {
       const token = await getValidAccessToken();
-      if (!token) return;
+      if (!token) {
+        showLoggedOutUI();
+        return;
+      }
 
       spotifyPlayer = new Spotify.Player({
         name: 'Retro Win98 Browser Player',
         getOAuthToken: async cb => {
           const freshToken = await getValidAccessToken();
-          cb(freshToken);
+          if (freshToken) cb(freshToken);
         },
         volume: 0.8
       });
@@ -1348,9 +1364,7 @@
         activeDeviceId = device_id;
         document.getElementById('device-status').innerText = 'Online';
         document.getElementById('now-playing-title').innerText = 'Status: Connected & Ready';
-        document.getElementById('auth-section').style.display = 'none';
-        document.getElementById('explorer-section').style.display = 'block';
-
+        showLoggedInUI();
         loadUserPlaylists();
       });
 
@@ -1370,6 +1384,10 @@
         return;
       }
       const token = await getValidAccessToken();
+      if (!token) {
+        showLoggedOutUI();
+        return;
+      }
 
       await fetch(`https://api.spotify.com/v1/me/player/play?device_id=${activeDeviceId}`, {
         method: 'PUT',
@@ -1398,19 +1416,20 @@
       const code = urlParams.get('code');
 
       if (code) {
-        await fetchTokens(code);
-        document.getElementById('auth-section').style.display = 'none';
-        document.getElementById('explorer-section').style.display = 'block';
-        loadUserPlaylists();
+        const token = await fetchTokens(code);
+        if (token) {
+          showLoggedInUI();
+          loadUserPlaylists();
+        } else {
+          showLoggedOutUI();
+        }
       } else {
         const token = await getValidAccessToken();
         if (token) {
-          document.getElementById('auth-section').style.display = 'none';
-          document.getElementById('explorer-section').style.display = 'block';
+          showLoggedInUI();
           loadUserPlaylists();
-          if (window.Spotify) {
-            window.onSpotifyWebPlaybackSDKReady();
-          }
+        } else {
+          showLoggedOutUI();
         }
       }
     }
