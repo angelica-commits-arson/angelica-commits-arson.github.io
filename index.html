@@ -81,6 +81,12 @@
       left: 810px;
     }
 
+    #minesweeper-window {
+      width: 260px;
+      top: 150px;
+      left: 450px;
+    }
+
     .address-bar-container {
       display: flex;
       align-items: center;
@@ -162,6 +168,57 @@
       padding: 10px;
       font-family: monospace;
       border: 2px inset #dfdfdf;
+      transition: color 0.3s ease;
+    }
+
+    /* Minesweeper Styles */
+    .ms-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: #c0c0c0;
+      border: 2px inset #fff;
+      padding: 4px 8px;
+      margin-bottom: 8px;
+    }
+
+    .ms-counter {
+      background: #000;
+      color: #ff0000;
+      font-family: monospace;
+      font-size: 18px;
+      font-weight: bold;
+      padding: 2px 6px;
+      border: 1px inset #7d7d7d;
+    }
+
+    .ms-grid {
+      display: grid;
+      grid-template-columns: repeat(9, 24px);
+      grid-template-rows: repeat(9, 24px);
+      gap: 1px;
+      background: #808080;
+      border: 2px inset #fff;
+      width: fit-content;
+      margin: 0 auto;
+    }
+
+    .ms-cell {
+      width: 24px;
+      height: 24px;
+      background: #c0c0c0;
+      border: 2px outset #fff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: bold;
+      font-size: 12px;
+      cursor: pointer;
+    }
+
+    .ms-cell.revealed {
+      border: 1px solid #7d7d7d;
+      background: #bdbdbd;
     }
 
     /* Taskbar */
@@ -203,6 +260,10 @@
     <div class="desktop-icon" onclick="toggleWindow('display-window')">
       <img src="https://win98icons.alexmeub.com/icons/png/display_properties-0.png" alt="Display">
       <span>Display</span>
+    </div>
+    <div class="desktop-icon" onclick="toggleWindow('minesweeper-window')">
+      <img src="https://win98icons.alexmeub.com/icons/png/game_mine_1-0.png" alt="Minesweeper">
+      <span>Minesweeper</span>
     </div>
   </div>
 
@@ -270,8 +331,7 @@
       </div>
     </div>
     <div class="window-body">
-      <p style="margin-top: 0;">Select a Desktop Background:</p>
-      
+      <p style="margin-top: 0; font-weight: bold;">Desktop Background:</p>
       <div class="field-row">
         <select id="wallpaper-select" style="width: 100%;">
           <option value="teal">Classic Win95 Teal</option>
@@ -280,10 +340,39 @@
         </select>
       </div>
 
-      <div style="margin-top: 10px;" class="field-row">
-        <button onclick="applyWallpaper()">Apply</button>
+      <p style="margin-top: 12px; margin-bottom: 4px; font-weight: bold;">Clock Color:</p>
+      <div class="field-row">
+        <select id="clock-color-select" style="width: 100%;">
+          <option value="#00ff00">Matrix Green</option>
+          <option value="#ffb000">Retro Amber</option>
+          <option value="#00ffff">Classic Cyan</option>
+          <option value="#ff69b4">Hot Pink</option>
+          <option value="#ffffff">Crisp White</option>
+        </select>
+      </div>
+
+      <div style="margin-top: 14px;" class="field-row">
+        <button onclick="applyDisplaySettings()">Apply</button>
         <button onclick="toggleWindow('display-window')">Cancel</button>
       </div>
+    </div>
+  </div>
+
+  <!-- 4. MINESWEEPER WINDOW -->
+  <div class="window" id="minesweeper-window" style="display: none;">
+    <div class="title-bar">
+      <div class="title-bar-text">Minesweeper</div>
+      <div class="title-bar-controls">
+        <button aria-label="Close" onclick="toggleWindow('minesweeper-window')"></button>
+      </div>
+    </div>
+    <div class="window-body">
+      <div class="ms-header">
+        <div class="ms-counter" id="ms-mine-count">010</div>
+        <button id="ms-reset-btn" onclick="initMinesweeper()" style="min-width: 30px; height: 30px; padding: 0;">🙂</button>
+        <div class="ms-counter" id="ms-timer">000</div>
+      </div>
+      <div class="ms-grid" id="ms-board"></div>
     </div>
   </div>
 
@@ -313,20 +402,181 @@
       clouds: 'Windows_95_Bliss.jpg' 
     };
 
-    // Inline SVG Folder Icon Fallback (Guaranteed to load)
+    // Inline SVG Folder Icon Fallback
     const defaultFolderIcon = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='48' height='48' viewBox='0 0 24 24' fill='%23e6c229'><path d='M10 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z'/></svg>";
 
-    function applyWallpaper() {
-      const selected = document.getElementById('wallpaper-select').value;
+    function applyDisplaySettings() {
+      // Background Wallpaper
+      const selectedWallpaper = document.getElementById('wallpaper-select').value;
       const body = document.getElementById('desktop-body');
-      
-      if (selected === 'teal') {
+      if (selectedWallpaper === 'teal') {
         body.style.backgroundImage = 'none';
         body.style.backgroundColor = '#008080';
       } else {
-        body.style.backgroundImage = `url('${wallpapers[selected]}')`;
+        body.style.backgroundImage = `url('${wallpapers[selectedWallpaper]}')`;
+      }
+
+      // Clock Text Color
+      const selectedColor = document.getElementById('clock-color-select').value;
+      document.getElementById('gadget-clock').style.color = selectedColor;
+    }
+
+    // ==========================================
+    // MINESWEEPER LOGIC (9x9 with 10 mines)
+    // ==========================================
+    const MS_ROWS = 9, MS_COLS = 9, MS_MINES = 10;
+    let msBoard = [], msGameOver = false, msTimer = 0, msInterval = null, msFlags = 0;
+
+    function initMinesweeper() {
+      clearInterval(msInterval);
+      msTimer = 0;
+      msFlags = MS_MINES;
+      msGameOver = false;
+      document.getElementById('ms-timer').innerText = '000';
+      document.getElementById('ms-mine-count').innerText = '010';
+      document.getElementById('ms-reset-btn').innerText = '🙂';
+
+      const boardEl = document.getElementById('ms-board');
+      boardEl.innerHTML = '';
+      msBoard = Array(MS_ROWS).fill(null).map(() => Array(MS_COLS).fill(null).map(() => ({
+        mine: false, revealed: false, flagged: false, count: 0
+      })));
+
+      // Plant Mines
+      let planted = 0;
+      while (planted < MS_MINES) {
+        let r = Math.floor(Math.random() * MS_ROWS);
+        let c = Math.floor(Math.random() * MS_COLS);
+        if (!msBoard[r][c].mine) {
+          msBoard[r][c].mine = true;
+          planted++;
+        }
+      }
+
+      // Calculate Neighbor Counts
+      for (let r = 0; r < MS_ROWS; r++) {
+        for (let c = 0; c < MS_COLS; c++) {
+          if (msBoard[r][c].mine) continue;
+          let count = 0;
+          for (let dr = -1; dr <= 1; dr++) {
+            for (let dc = -1; dc <= 1; dc++) {
+              let nr = r + dr, nc = c + dc;
+              if (nr >= 0 && nr < MS_ROWS && nc >= 0 && nc < MS_COLS && msBoard[nr][nc].mine) {
+                count++;
+              }
+            }
+          }
+          msBoard[r][c].count = count;
+        }
+      }
+
+      // Render Cells
+      for (let r = 0; r < MS_ROWS; r++) {
+        for (let c = 0; c < MS_COLS; c++) {
+          let cell = document.createElement('div');
+          cell.className = 'ms-cell';
+          cell.dataset.row = r;
+          cell.dataset.col = c;
+          cell.addEventListener('click', () => clickCell(r, c));
+          cell.addEventListener('contextmenu', (e) => {
+            e.preventDefault();
+            flagCell(r, c);
+          });
+          boardEl.appendChild(cell);
+        }
       }
     }
+
+    function startMsTimer() {
+      if (!msInterval && !msGameOver) {
+        msInterval = setInterval(() => {
+          msTimer = Math.min(999, msTimer + 1);
+          document.getElementById('ms-timer').innerText = String(msTimer).padStart(3, '0');
+        }, 1000);
+      }
+    }
+
+    function clickCell(r, c) {
+      if (msGameOver || msBoard[r][c].flagged || msBoard[r][c].revealed) return;
+      startMsTimer();
+
+      let cellObj = msBoard[r][c];
+      cellObj.revealed = true;
+      let el = document.querySelector(`.ms-cell[data-row="${r}"][data-col="${c}"]`);
+      el.classList.add('revealed');
+
+      if (cellObj.mine) {
+        el.innerText = '💣';
+        el.style.background = '#ff0000';
+        endGame(false);
+        return;
+      }
+
+      if (cellObj.count > 0) {
+        el.innerText = cellObj.count;
+        const colors = ['', 'blue', 'green', 'red', 'darkblue', 'brown', 'teal', 'black', 'gray'];
+        el.style.color = colors[cellObj.count];
+      } else {
+        // Flood fill empty neighbors
+        for (let dr = -1; dr <= 1; dr++) {
+          for (let dc = -1; dc <= 1; dc++) {
+            let nr = r + dr, nc = c + dc;
+            if (nr >= 0 && nr < MS_ROWS && nc >= 0 && nc < MS_COLS) {
+              clickCell(nr, nc);
+            }
+          }
+        }
+      }
+
+      checkWin();
+    }
+
+    function flagCell(r, c) {
+      if (msGameOver || msBoard[r][c].revealed) return;
+      startMsTimer();
+      let cellObj = msBoard[r][c];
+      let el = document.querySelector(`.ms-cell[data-row="${r}"][data-col="${c}"]`);
+
+      if (!cellObj.flagged && msFlags > 0) {
+        cellObj.flagged = true;
+        el.innerText = '🚩';
+        msFlags--;
+      } else if (cellObj.flagged) {
+        cellObj.flagged = false;
+        el.innerText = '';
+        msFlags++;
+      }
+      document.getElementById('ms-mine-count').innerText = String(msFlags).padStart(3, '0');
+    }
+
+    function checkWin() {
+      let unrevealedNonMines = 0;
+      for (let r = 0; r < MS_ROWS; r++) {
+        for (let c = 0; c < MS_COLS; c++) {
+          if (!msBoard[r][c].mine && !msBoard[r][c].revealed) unrevealedNonMines++;
+        }
+      }
+      if (unrevealedNonMines === 0) endGame(true);
+    }
+
+    function endGame(won) {
+      msGameOver = true;
+      clearInterval(msInterval);
+      document.getElementById('ms-reset-btn').innerText = won ? '😎' : '😵';
+
+      // Reveal all mines
+      for (let r = 0; r < MS_ROWS; r++) {
+        for (let c = 0; c < MS_COLS; c++) {
+          if (msBoard[r][c].mine) {
+            let el = document.querySelector(`.ms-cell[data-row="${r}"][data-col="${c}"]`);
+            if (!msBoard[r][c].flagged) el.innerText = '💣';
+          }
+        }
+      }
+    }
+
+    // Initialize Minesweeper on startup
+    initMinesweeper();
 
     // ==========================================
     // FOLDER & EXPLORER NAVIGATION SYSTEM
@@ -364,6 +614,13 @@
         const response = await fetch('https://api.spotify.com/v1/me/playlists?limit=50', {
           headers: { Authorization: `Bearer ${token}` }
         });
+
+        if (response.status === 401 || response.status === 403) {
+          localStorage.clear();
+          container.innerHTML = '<p>Session expired or permissions updated. <button onclick="redirectToSpotifyAuth()">Please Re-connect Spotify</button></p>';
+          return;
+        }
+
         const data = await response.json();
 
         let gridHTML = '<div class="folder-grid">';
@@ -374,7 +631,7 @@
               : defaultFolderIcon;
 
             gridHTML += `
-              <div class="folder-item" onclick="loadPlaylistTracks('${playlist.id}', '${encodeURIComponent(playlist.name)}')">
+              <div class="folder-item" onclick="loadPlaylistTracks('${playlist.id}', '${playlist.uri}', '${encodeURIComponent(playlist.name)}')">
                 <img src="${imgUrl}" onerror="this.src='${defaultFolderIcon}'">
                 <span>${playlist.name}</span>
               </div>
@@ -386,11 +643,11 @@
         gridHTML += '</div>';
         container.innerHTML = gridHTML;
       } catch (err) {
-        container.innerHTML = '<p>Error loading playlists. Try re-connecting Spotify.</p>';
+        container.innerHTML = '<p>Error loading playlists. Please re-connect Spotify.</p>';
       }
     }
 
-    async function loadPlaylistTracks(playlistId, encodedName) {
+    async function loadPlaylistTracks(playlistId, playlistUri, encodedName) {
       currentPath = 'playlist_contents';
       const name = decodeURIComponent(encodedName);
       setAddressPath(`Playlists\\${name}`);
@@ -406,13 +663,13 @@
 
         let listHTML = '<ul style="list-style: none; padding: 0; margin: 0;">';
         if (data.items && data.items.length > 0) {
-          data.items.forEach(item => {
+          data.items.forEach((item, index) => {
             if (!item.track) return;
             const track = item.track;
             listHTML += `
               <li class="track-item">
                 <span><strong>${track.name}</strong> - ${track.artists[0]?.name || 'Unknown Artist'}</span>
-                <button onclick="playTrack('${track.uri}')">Play</button>
+                <button onclick="playContext('${playlistUri}', ${index})">Play</button>
               </li>
             `;
           });
@@ -446,7 +703,7 @@
             listHTML += `
               <li class="track-item">
                 <span><strong>${track.name}</strong> - ${track.artists[0]?.name || 'Unknown Artist'}</span>
-                <button onclick="playTrack('${track.uri}')">Play</button>
+                <button onclick="playSingleTrack('${track.uri}')">Play</button>
               </li>
             `;
           });
@@ -653,7 +910,24 @@
       spotifyPlayer.connect();
     };
 
-    async function playTrack(uri) {
+    async function playContext(contextUri, trackPosition) {
+      if (!activeDeviceId) return;
+      const token = await getValidAccessToken();
+
+      await fetch(`https://api.spotify.com/v1/me/player/play?device_id=${activeDeviceId}`, {
+        method: 'PUT',
+        body: JSON.stringify({ 
+          context_uri: contextUri,
+          offset: { position: trackPosition }
+        }),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+      });
+    }
+
+    async function playSingleTrack(uri) {
       if (!activeDeviceId) return;
       const token = await getValidAccessToken();
 
