@@ -444,7 +444,7 @@
         <label for="f1-year-select">Season:</label>
         <select id="f1-year-select"></select>
 
-        <button onclick="loadWikiF1View('teams')">🏎️ Team / Constructor Standings</button>
+        <button onclick="loadWikiF1View('teams')">🏎️ Teams</button>
         <button onclick="loadWikiF1View('drivers')">🏆 Driver Standings</button>
         <button onclick="loadWikiF1View('schedule')">📅 Race Calendar</button>
       </div>
@@ -543,7 +543,6 @@
   <script>
     const CLIENT_ID = '4692b9fae514427c9a94e6bde0d8e390'; 
     const REDIRECT_URI = 'https://angelica-commits-arson.github.io/'; 
-    // Complete playlist permissions explicitly declared
     const SCOPES = 'streaming user-read-email user-read-private user-modify-playback-state user-read-playback-state playlist-read-private playlist-read-collaborative playlist-modify-public playlist-modify-private';
 
     let spotifyPlayer = null;
@@ -571,7 +570,7 @@
     }
 
     // ==========================================
-    // WIKIPEDIA F1 ENGINE (Default to Teams/Constructors)
+    // WIKIPEDIA F1 ENGINE
     // ==========================================
     function initF1App() {
       const yearSelect = document.getElementById('f1-year-select');
@@ -588,7 +587,6 @@
       }
 
       yearSelect.value = '2024';
-      // Default view is now Teams/Constructors on year change
       yearSelect.addEventListener('change', () => loadWikiF1View('teams'));
       loadWikiF1View('teams');
     }
@@ -620,23 +618,24 @@
         const tables = Array.from(doc.querySelectorAll('table'));
 
         if (viewType === 'schedule') {
+          // Race Calendar Parsing
           targetTable = tables.find(t => {
             const txt = t.innerText.toLowerCase();
-            return (txt.includes('grand prix') || txt.includes('circuit') || txt.includes('race')) && 
-                   (txt.includes('date') || txt.includes('round') || txt.includes('winner'));
+            return (txt.includes('grand prix') || txt.includes('circuit') || txt.includes('date')) &&
+                   (txt.includes('round') || txt.includes('winner') || txt.includes('location')) &&
+                   !txt.includes('drivers') && !txt.includes('constructors');
           });
         } else if (viewType === 'teams') {
-          // Robust parsing for Constructor / Team standings (including post-2004)
+          // Teams / Constructors Parsing
           targetTable = tables.find(t => {
             const txt = t.innerText.toLowerCase();
             const caption = t.querySelector('caption')?.innerText.toLowerCase() || '';
-            const isConstructorHeader = (txt.includes('constructor') || txt.includes('team') || txt.includes('make') || txt.includes('entrant')) &&
-                                        (txt.includes('points') || txt.includes('pts') || txt.includes('pos'));
-            const isNotDriverStandings = !caption.includes('driver') && !txt.includes('world drivers');
-            return isConstructorHeader && isNotDriverStandings;
+            const isConstructorTable = (txt.includes('constructor') || txt.includes('team') || txt.includes('entrant')) &&
+                                       (txt.includes('pts') || txt.includes('points') || txt.includes('pos'));
+            const isNotDriver = !caption.includes('driver') && !txt.includes('world drivers');
+            return isConstructorTable && isNotDriver;
           });
 
-          // Secondary search fallback
           if (!targetTable) {
             targetTable = tables.reverse().find(t => {
               const txt = t.innerText.toLowerCase();
@@ -644,12 +643,13 @@
             });
           }
         } else if (viewType === 'drivers') {
+          // Drivers Championship Parsing
           targetTable = tables.find(t => {
             const txt = t.innerText.toLowerCase();
             const caption = t.querySelector('caption')?.innerText.toLowerCase() || '';
-            const isDriverHeader = txt.includes('driver') && (txt.includes('pts') || txt.includes('points'));
-            const isNotGrandsPrix = !txt.includes('grand prix calendar') && !caption.includes('results');
-            return isDriverHeader && isNotGrandsPrix;
+            const isDriverTable = txt.includes('driver') && (txt.includes('pts') || txt.includes('points'));
+            const isNotCalendar = !txt.includes('grand prix calendar') && !caption.includes('results');
+            return isDriverTable && isNotCalendar;
           });
         }
 
@@ -667,8 +667,8 @@
             }
           });
 
-          let titleLabel = "Teams / Constructors' Championship";
-          if (viewType === 'drivers') titleLabel = "Drivers' Championship Standings";
+          let titleLabel = "Teams";
+          if (viewType === 'drivers') titleLabel = "Driver Standings";
           if (viewType === 'schedule') titleLabel = "Race Calendar";
 
           container.innerHTML = `
@@ -685,7 +685,7 @@
     }
 
     // ==========================================
-    // SPOTIFY PLAYLIST MANAGEMENT (Fixed 403 & Mixes)
+    // SPOTIFY PLAYLIST MANAGEMENT (Robust Folder Loading)
     // ==========================================
     async function loadUserPlaylists() {
       const sidebarList = document.getElementById('playlist-folder-list');
@@ -742,15 +742,19 @@
 
       try {
         const token = await getValidAccessToken();
-        if (!token) return;
+        if (!token) {
+          container.innerHTML = `<p style="color:red;">No valid access token. Please reconnect Spotify.</p>`;
+          return;
+        }
 
-        // Uses root playlist endpoint to avoid 403/mix permissions issues
-        let response = await fetch(`https://api.spotify.com/v1/playlists/${playlistId}`, {
+        // Endpoint targeting tracks explicitly with limit handling
+        let response = await fetch(`https://api.spotify.com/v1/playlists/${playlistId}/tracks?limit=100`, {
           headers: { 'Authorization': `Bearer ${token}` }
         });
 
+        // Secondary fallback to root endpoint
         if (!response.ok) {
-          response = await fetch(`https://api.spotify.com/v1/playlists/${playlistId}/tracks?limit=50`, {
+          response = await fetch(`https://api.spotify.com/v1/playlists/${playlistId}`, {
             headers: { 'Authorization': `Bearer ${token}` }
           });
         }
@@ -758,21 +762,21 @@
         if (!response.ok) {
           const errData = await response.json().catch(() => null);
           const msg = errData?.error?.message || `HTTP ${response.status}`;
-          container.innerHTML = `<p style="color:red;">Error loading playlist contents (${msg}).</p>`;
+          container.innerHTML = `<p style="color:red;">Error loading playlist contents (${msg}). Try clicking "Disconnect / Reset Session" to renew access.</p>`;
           return;
         }
 
         const data = await response.json();
-        const items = data.tracks ? (data.tracks.items || []) : (data.items || []);
+        const items = data.items ? data.items : (data.tracks ? data.tracks.items : []);
 
         let headerHTML = `
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; padding-bottom:4px; border-bottom:1px solid #808080;">
-            <h4 style="margin:0;">📁 Folder: ${playlistName} (${items.length} tracks)</h4>
+            <h4 style="margin:0;">📁 Folder: ${playlistName} (${items ? items.length : 0} tracks)</h4>
             <button onclick="playPlaylistContext('${playlistUri}')">▶ Play Folder</button>
           </div>
         `;
 
-        if (items.length === 0) {
+        if (!items || items.length === 0) {
           container.innerHTML = headerHTML + '<p>This folder is empty.</p>';
           return;
         }
