@@ -9,17 +9,19 @@
   <!-- Spotify Web Playback SDK -->
   <script src="https://sdk.scdn.co/spotify-player.js"></script>
   <style>
-    * {
-      box-sizing: border-box;
-    }
+    * { box-sizing: border-box; }
 
     body {
-      background-color: #008080; /* Classic Windows Teal Background */
+      background-color: #008080;
+      background-size: cover;
+      background-position: center;
+      background-repeat: no-repeat;
       margin: 0;
       height: 100vh;
       overflow: hidden;
       font-family: 'Pixelated MS Sans Serif', Arial, sans-serif;
       user-select: none;
+      transition: background-image 0.2s ease-in-out;
     }
 
     /* Desktop Icons Area */
@@ -58,19 +60,25 @@
     }
 
     .window .title-bar {
-      cursor: move; /* Indicates draggable header */
+      cursor: move;
     }
 
     #player-window {
-      width: 650px;
-      top: 50px;
-      left: 120px;
+      width: 680px;
+      top: 40px;
+      left: 110px;
     }
 
     #clock-window {
       width: 220px;
-      top: 100px;
-      left: 800px;
+      top: 40px;
+      left: 810px;
+    }
+
+    #display-window {
+      width: 300px;
+      top: 200px;
+      left: 810px;
     }
 
     .address-bar-container {
@@ -88,6 +96,35 @@
       overflow-y: auto;
       padding: 12px;
       color: black;
+    }
+
+    /* Grid Layout for Folder View */
+    .folder-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+      gap: 16px;
+      padding: 8px;
+    }
+
+    .folder-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      cursor: pointer;
+      padding: 6px;
+    }
+
+    .folder-item:hover {
+      background-color: #000080;
+      color: white;
+    }
+
+    .folder-item img {
+      width: 48px;
+      height: 48px;
+      object-fit: cover;
+      margin-bottom: 6px;
     }
 
     .track-item {
@@ -125,7 +162,7 @@
       border: 2px inset #dfdfdf;
     }
 
-    /* Windows Taskbar */
+    /* Taskbar */
     .taskbar {
       position: fixed;
       bottom: 0;
@@ -149,7 +186,7 @@
     }
   </style>
 </head>
-<body>
+<body id="desktop-body">
 
   <!-- Desktop Icons -->
   <div class="desktop">
@@ -160,6 +197,10 @@
     <div class="desktop-icon" onclick="toggleWindow('clock-window')">
       <img src="https://win98icons.alexmeub.com/icons/png/clock-0.png" alt="Clock">
       <span>Clock</span>
+    </div>
+    <div class="desktop-icon" onclick="toggleWindow('display-window')">
+      <img src="https://win98icons.alexmeub.com/icons/png/display_properties-0.png" alt="Display">
+      <span>Display</span>
     </div>
   </div>
 
@@ -174,25 +215,27 @@
     </div>
 
     <div class="window-body">
+      <!-- Address Bar Controls -->
       <div class="address-bar-container">
-        <button>Back</button>
-        <button>Forward</button>
+        <button id="back-btn" onclick="navUp()">Up 📁</button>
         <label for="address">Address:</label>
-        <input id="address" type="text" value="https://spotify.local/player" style="flex-grow: 1;" readonly>
+        <input id="address" type="text" value="C:\Spotify" style="flex-grow: 1;" readonly>
       </div>
 
+      <!-- Main Directory Content -->
       <div class="browser-content" id="content-area">
         <div id="auth-section">
           <p>Welcome! Click below to authorize your Spotify Premium account.</p>
           <button id="login-btn">Connect Spotify</button>
         </div>
 
-        <div id="tracks-list" style="display: none;">
+        <div id="explorer-section" style="display: none;">
           <div class="now-playing-banner" id="now-playing-title">Status: Idle</div>
-          <ul id="songs-container" style="list-style: none; padding: 0; margin: 0;"></ul>
+          <div id="view-container"></div>
         </div>
       </div>
 
+      <!-- Player Control Bar -->
       <div class="field-row player-controls">
         <button id="play-btn">▶ Play</button>
         <button id="pause-btn">⏸ Pause</button>
@@ -216,6 +259,32 @@
     </div>
   </div>
 
+  <!-- 3. DISPLAY PROPERTIES WINDOW -->
+  <div class="window" id="display-window">
+    <div class="title-bar">
+      <div class="title-bar-text">Display Properties</div>
+      <div class="title-bar-controls">
+        <button aria-label="Close" onclick="toggleWindow('display-window')"></button>
+      </div>
+    </div>
+    <div class="window-body">
+      <p style="margin-top: 0;">Select a Desktop Background:</p>
+      
+      <div class="field-row">
+        <select id="wallpaper-select" style="width: 100%;">
+          <option value="teal">Classic Win95 Teal</option>
+          <option value="bliss">Windows XP (Bliss Hill)</option>
+          <option value="clouds">Windows 95 Clouds</option>
+        </select>
+      </div>
+
+      <div style="margin-top: 10px;" class="field-row">
+        <button onclick="applyWallpaper()">Apply</button>
+        <button onclick="toggleWindow('display-window')">Cancel</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Taskbar -->
   <div class="taskbar">
     <button style="font-weight: bold; display: flex; align-items: center; gap: 4px;">
@@ -229,10 +298,141 @@
     // Configuration Settings
     const CLIENT_ID = '4692b9fae514427c9a94e6bde0d8e390'; 
     const REDIRECT_URI = 'https://angelica-commits-arson.github.io/'; 
-    const SCOPES = 'user-read-recently-played user-library-read user-modify-playback-state streaming user-read-playback-state';
+    const SCOPES = 'user-read-recently-played user-library-read user-modify-playback-state streaming user-read-playback-state playlist-read-private';
 
     let spotifyPlayer = null;
     let activeDeviceId = null;
+    let currentPath = 'root'; // Navigation State: 'root', 'playlists', 'recent', or 'playlist_TRACK_ID'
+
+    const wallpapers = {
+      teal: '',
+      bliss: 'https://upload.wikimedia.org/wikipedia/en/2/27/Bliss_%28location_in_California%29.png',
+      clouds: 'https://upload.wikimedia.org/wikipedia/commons/2/22/Clouds_%28Windows_95%29.png'
+    };
+
+    function applyWallpaper() {
+      const selected = document.getElementById('wallpaper-select').value;
+      const body = document.getElementById('desktop-body');
+      
+      if (selected === 'teal') {
+        body.style.backgroundImage = 'none';
+        body.style.backgroundColor = '#008080';
+      } else {
+        body.style.backgroundImage = `url('${wallpapers[selected]}')`;
+      }
+    }
+
+    // ==========================================
+    // FOLDER & EXPLORER NAVIGATION SYSTEM
+    // ==========================================
+    function setAddressPath(path) {
+      document.getElementById('address').value = `C:\\Spotify\\${path}`;
+    }
+
+    function renderRootView() {
+      currentPath = 'root';
+      setAddressPath('');
+      const container = document.getElementById('view-container');
+      container.innerHTML = `
+        <div class="folder-grid">
+          <div class="folder-item" onclick="loadPlaylistsFolder()">
+            <img src="https://win98icons.alexmeub.com/icons/png/directory_open_file_ydocs-4.png">
+            <span>Playlists</span>
+          </div>
+          <div class="folder-item" onclick="loadRecentTracks()">
+            <img src="https://win98icons.alexmeub.com/icons/png/cd_audio_cd-0.png">
+            <span>Recently Played</span>
+          </div>
+        </div>
+      `;
+    }
+
+    async function loadPlaylistsFolder() {
+      currentPath = 'playlists';
+      setAddressPath('Playlists');
+      const container = document.getElementById('view-container');
+      container.innerHTML = '<p>Loading playlists...</p>';
+
+      const token = await getValidAccessToken();
+      const response = await fetch('https://api.spotify.com/v1/me/playlists?limit=20', {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      const data = await response.json();
+
+      let gridHTML = '<div class="folder-grid">';
+      data.items.forEach(playlist => {
+        const imgUrl = playlist.images[0]?.url || 'https://win98icons.alexmeub.com/icons/png/directory_open_file_ydocs-4.png';
+        gridHTML += `
+          <div class="folder-item" onclick="loadPlaylistTracks('${playlist.id}', '${escape(playlist.name)}')">
+            <img src="${imgUrl}">
+            <span>${playlist.name}</span>
+          </div>
+        `;
+      });
+      gridHTML += '</div>';
+      container.innerHTML = gridHTML;
+    }
+
+    async function loadPlaylistTracks(playlistId, name) {
+      currentPath = 'playlist_contents';
+      setAddressPath(`Playlists\\${unescape(name)}`);
+      const container = document.getElementById('view-container');
+      container.innerHTML = '<p>Opening playlist...</p>';
+
+      const token = await getValidAccessToken();
+      const response = await fetch(`https://api.spotify.com/v1/playlists/${playlistId}/tracks?limit=30`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      const data = await response.json();
+
+      let listHTML = '<ul style="list-style: none; padding: 0; margin: 0;">';
+      data.items.forEach(item => {
+        if (!item.track) return;
+        const track = item.track;
+        listHTML += `
+          <li class="track-item">
+            <span><strong>${track.name}</strong> - ${track.artists[0].name}</span>
+            <button onclick="playTrack('${track.uri}')">Play</button>
+          </li>
+        `;
+      });
+      listHTML += '</ul>';
+      container.innerHTML = listHTML;
+    }
+
+    async function loadRecentTracks() {
+      currentPath = 'recent';
+      setAddressPath('Recently Played');
+      const container = document.getElementById('view-container');
+      container.innerHTML = '<p>Loading tracks...</p>';
+
+      const token = await getValidAccessToken();
+      const response = await fetch('https://api.spotify.com/v1/me/player/recently-played?limit=20', {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      const data = await response.json();
+
+      let listHTML = '<ul style="list-style: none; padding: 0; margin: 0;">';
+      data.items.forEach(item => {
+        const track = item.track;
+        listHTML += `
+          <li class="track-item">
+            <span><strong>${track.name}</strong> - ${track.artists[0].name}</span>
+            <button onclick="playTrack('${track.uri}')">Play</button>
+          </li>
+        `;
+      });
+      listHTML += '</ul>';
+      container.innerHTML = listHTML;
+    }
+
+    function navUp() {
+      if (currentPath === 'playlist_contents') {
+        loadPlaylistsFolder();
+      } else if (currentPath === 'playlists' || currentPath === 'recent') {
+        renderRootView();
+      }
+    }
 
     // ==========================================
     // WINDOW DRAGGING & TOGGLE LOGIC
@@ -246,7 +446,6 @@
         mouseX = e.clientX;
         mouseY = e.clientY;
         
-        // Bring window to front
         document.querySelectorAll('.window').forEach(w => w.style.zIndex = 10);
         windowEl.style.zIndex = 20;
 
@@ -267,16 +466,11 @@
       };
     }
 
-    // Attach drag behavior to all windows
     document.querySelectorAll('.window').forEach(makeDraggable);
 
     function toggleWindow(id) {
       const el = document.getElementById(id);
-      if (el.style.display === 'none') {
-        el.style.display = 'block';
-      } else {
-        el.style.display = 'none';
-      }
+      el.style.display = (el.style.display === 'none') ? 'block' : 'none';
     }
 
     // Live Clock Update
@@ -410,7 +604,9 @@
       spotifyPlayer.addListener('ready', ({ device_id }) => {
         activeDeviceId = device_id;
         document.getElementById('device-status').innerText = 'Connected';
-        loadRecentTracks();
+        document.getElementById('auth-section').style.display = 'none';
+        document.getElementById('explorer-section').style.display = 'block';
+        renderRootView();
       });
 
       spotifyPlayer.addListener('player_state_changed', state => {
@@ -422,33 +618,6 @@
 
       spotifyPlayer.connect();
     };
-
-    async function loadRecentTracks() {
-      const token = await getValidAccessToken();
-      const response = await fetch('https://api.spotify.com/v1/me/player/recently-played?limit=15', {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      const data = await response.json();
-
-      const container = document.getElementById('songs-container');
-      container.innerHTML = '';
-
-      if (data.items) {
-        data.items.forEach(item => {
-          const track = item.track;
-          const li = document.createElement('li');
-          li.className = 'track-item';
-          li.innerHTML = `
-            <span><strong>${track.name}</strong> - ${track.artists[0].name}</span>
-            <button onclick="playTrack('${track.uri}')">Play</button>
-          `;
-          container.appendChild(li);
-        });
-
-        document.getElementById('auth-section').style.display = 'none';
-        document.getElementById('tracks-list').style.display = 'block';
-      }
-    }
 
     async function playTrack(uri) {
       if (!activeDeviceId) return;
