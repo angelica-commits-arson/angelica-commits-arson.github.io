@@ -444,8 +444,8 @@
     const REDIRECT_URI = 'https://angelica-commits-arson.github.io/'; 
     const SCOPES = 'user-read-recently-played user-library-read user-modify-playback-state streaming user-read-playback-state playlist-read-private playlist-read-collaborative';
 
-    // Live Ergast Mirror (Jolpica API Endpoint)
-    const F1_API_BASE = 'https://api.jolpica.net/ergast/f1';
+    const F1_PRIMARY_API = 'https://api.jolpica.net/ergast/f1';
+    const F1_FALLBACK_API = 'https://ergast.com/api/f1';
 
     let spotifyPlayer = null;
     let activeDeviceId = null;
@@ -474,8 +474,20 @@
     }
 
     // ==========================================
-    // F1 ARCHIVE APP LOGIC (Jolpica Mirror)
+    // F1 ARCHIVE APP LOGIC (WITH FALLBACK)
     // ==========================================
+    async function fetchF1Data(endpoint) {
+      try {
+        const res = await fetch(`${F1_PRIMARY_API}${endpoint}`);
+        if (!res.ok) throw new Error('Primary API error');
+        return await res.json();
+      } catch (err) {
+        const fallbackRes = await fetch(`${F1_FALLBACK_API}${endpoint}`);
+        if (!fallbackRes.ok) throw new Error('Fallback API error');
+        return await fallbackRes.json();
+      }
+    }
+
     function initF1App() {
       const yearSelect = document.getElementById('f1-year-select');
       const currentYear = new Date().getFullYear();
@@ -497,11 +509,15 @@
       raceSelect.innerHTML = '<option value="">Loading races...</option>';
 
       try {
-        const response = await fetch(`${F1_API_BASE}/${year}.json`);
-        const data = await response.json();
+        const data = await fetchF1Data(`/${year}.json`);
         const races = data.MRData.RaceTable.Races;
 
         raceSelect.innerHTML = '';
+        if (!races || races.length === 0) {
+          raceSelect.innerHTML = '<option value="">No races found</option>';
+          return;
+        }
+
         races.forEach(race => {
           const opt = document.createElement('option');
           opt.value = race.round;
@@ -511,6 +527,7 @@
 
         loadF1RaceResults();
       } catch (err) {
+        console.error('F1 Schedule Error:', err);
         raceSelect.innerHTML = '<option value="">Error loading schedule</option>';
       }
     }
@@ -525,8 +542,7 @@
       container.innerHTML = '<p>Fetching race results...</p>';
 
       try {
-        const response = await fetch(`${F1_API_BASE}/${year}/${round}/results.json`);
-        const data = await response.json();
+        const data = await fetchF1Data(`/${year}/${round}/results.json`);
         const race = data.MRData.RaceTable.Races[0];
 
         if (!race || !race.Results) {
@@ -551,13 +567,14 @@
         `;
 
         race.Results.forEach(r => {
-          const driverName = `${r.Driver.givenName} ${r.Driver.familyName}`;
+          const driverName = r.Driver ? `${r.Driver.givenName} ${r.Driver.familyName}` : 'Unknown';
           const status = r.Time ? r.Time.time : r.status;
+          const team = r.Constructor ? r.Constructor.name : 'N/A';
           html += `
             <tr>
               <td><strong>${r.position}</strong></td>
               <td>${driverName}</td>
-              <td>${r.Constructor.name}</td>
+              <td>${team}</td>
               <td>${r.laps}</td>
               <td>${status}</td>
               <td>${r.points}</td>
@@ -568,7 +585,8 @@
         html += '</tbody></table>';
         container.innerHTML = html;
       } catch (err) {
-        container.innerHTML = '<p>Error loading race results.</p>';
+        console.error('F1 Results Error:', err);
+        container.innerHTML = '<p>Error loading race results. Check internet connection/CORS permissions.</p>';
       }
     }
 
@@ -578,11 +596,10 @@
       container.innerHTML = `<p>Loading ${year} Drivers' Championship Standings...</p>`;
 
       try {
-        const response = await fetch(`${F1_API_BASE}/${year}/driverStandings.json`);
-        const data = await response.json();
+        const data = await fetchF1Data(`/${year}/driverStandings.json`);
         const standingsList = data.MRData.StandingsTable.StandingsLists[0];
 
-        if (!standingsList) {
+        if (!standingsList || !standingsList.DriverStandings) {
           container.innerHTML = `<p>No standings data available for ${year}.</p>`;
           return;
         }
@@ -603,8 +620,8 @@
         `;
 
         standingsList.DriverStandings.forEach(s => {
-          const driverName = `${s.Driver.givenName} ${s.Driver.familyName}`;
-          const team = s.Constructors[0] ? s.Constructors[0].name : 'N/A';
+          const driverName = s.Driver ? `${s.Driver.givenName} ${s.Driver.familyName}` : 'Unknown';
+          const team = (s.Constructors && s.Constructors[0]) ? s.Constructors[0].name : 'N/A';
           html += `
             <tr>
               <td><strong>${s.position}</strong></td>
@@ -619,6 +636,7 @@
         html += '</tbody></table>';
         container.innerHTML = html;
       } catch (err) {
+        console.error('F1 Standings Error:', err);
         container.innerHTML = '<p>Error loading championship standings.</p>';
       }
     }
@@ -876,18 +894,32 @@
           headers: { Authorization: `Bearer ${token}` }
         });
 
-        const data = await response.json();
-        
-        // Flexible track extraction (handles item.track or direct item)
-        const tracksList = (data.items || []).map(item => item.track || item).filter(track => track && track.name);
+        if (!response.ok) {
+          container.innerHTML = '<p>Error fetching playlist items. Token may be expired.</p>';
+          return;
+        }
 
-        if (tracksList.length > 0) {
+        const data = await response.json();
+        const items = data.items || [];
+        const validTracks = [];
+
+        items.forEach(item => {
+          const t = item.track || item;
+          if (t && t.name) {
+            validTracks.push({
+              name: t.name,
+              artist: (t.artists && t.artists.length > 0) ? t.artists[0].name : 'Unknown Artist',
+              uri: t.uri
+            });
+          }
+        });
+
+        if (validTracks.length > 0) {
           let listHTML = '<ul style="list-style: none; padding: 0; margin: 0;">';
-          tracksList.forEach((track, index) => {
-            const artistName = track.artists && track.artists.length > 0 ? track.artists[0].name : 'Unknown Artist';
+          validTracks.forEach((track, index) => {
             listHTML += `
               <li class="track-item">
-                <span><strong>${track.name}</strong> - ${artistName}</span>
+                <span><strong>${track.name}</strong> - ${track.artist}</span>
                 <button onclick="playContext('${playlistUri}', ${index})">Play</button>
               </li>
             `;
@@ -898,6 +930,7 @@
           container.innerHTML = '<p>No playable tracks found in this playlist.</p>';
         }
       } catch (err) {
+        console.error('Playlist Track Error:', err);
         container.innerHTML = '<p>Error loading playlist tracks.</p>';
       }
     }
