@@ -514,12 +514,9 @@
     const REDIRECT_URI = 'https://angelica-commits-arson.github.io/'; 
     const SCOPES = 'streaming user-read-email user-read-private user-modify-playback-state user-read-playback-state playlist-read-private playlist-read-collaborative playlist-modify-public playlist-modify-private';
 
-    const DEFAULT_PRESET_FOLDER_NAME = 'Retro Jams';
-
     let spotifyPlayer = null;
     let activeDeviceId = null;
     let userPlaylistsCache = [];
-    let defaultFolderId = null;
 
     const wallpapers = {
       teal: '',
@@ -662,19 +659,6 @@
         const data = await response.json();
         userPlaylistsCache = data.items || [];
 
-        // Check if preset default folder exists, if not create it
-        let presetFolder = userPlaylistsCache.find(pl => pl.name === DEFAULT_PRESET_FOLDER_NAME);
-        if (!presetFolder) {
-          presetFolder = await createSpotifyPlaylist(DEFAULT_PRESET_FOLDER_NAME, false);
-          if (presetFolder) {
-            userPlaylistsCache.unshift(presetFolder);
-          }
-        }
-
-        if (presetFolder) {
-          defaultFolderId = presetFolder.id;
-        }
-
         if (userPlaylistsCache.length === 0) {
           sidebarList.innerHTML = '<li style="padding:4px;">No playlists found</li>';
           return;
@@ -683,11 +667,10 @@
         let html = '';
         userPlaylistsCache.forEach(pl => {
           const safeName = pl.name.replace(/'/g, "\\'").replace(/"/g, '&quot;');
-          const isPreset = pl.name === DEFAULT_PRESET_FOLDER_NAME;
           html += `
             <li class="folder-item" onclick="loadPlaylistTracks('${pl.id}', '${safeName}', '${pl.uri}', this)">
-              <span>${isPreset ? '⭐' : '📁'}</span>
-              <span title="${pl.name}">${pl.name}${isPreset ? ' (Default)' : ''}</span>
+              <span>📁</span>
+              <span title="${pl.name}">${pl.name}</span>
             </li>
           `;
         });
@@ -700,10 +683,10 @@
       }
     }
 
-    async function createSpotifyPlaylist(name, showAlerts = true) {
+    async function createSpotifyPlaylist(name) {
       const token = await getValidAccessToken();
       if (!token) {
-        if (showAlerts) alert('No active session. Please click "Disconnect / Reset Session" and log in again.');
+        alert('No active session. Please log in again.');
         return null;
       }
 
@@ -726,13 +709,11 @@
         } else {
           const errData = await createRes.json().catch(() => null);
           const detail = errData?.error?.message || `HTTP ${createRes.status}`;
-          if (showAlerts) {
-            alert(`Could not create folder: ${detail}\n\nTip: Click "Disconnect / Reset Session" to update your permissions.`);
-          }
+          alert(`Could not create folder: ${detail}`);
         }
       } catch (err) {
         console.error('Failed to create playlist:', err);
-        if (showAlerts) alert('Error connecting to Spotify API.');
+        alert('Error connecting to Spotify API.');
       }
       return null;
     }
@@ -741,7 +722,7 @@
       const name = prompt('Enter a name for your new playlist folder:', 'My Win98 Playlist');
       if (!name || !name.trim()) return;
 
-      const newPl = await createSpotifyPlaylist(name.trim(), true);
+      const newPl = await createSpotifyPlaylist(name.trim());
       if (newPl) {
         alert(`📁 Folder "${name}" created successfully!`);
         await loadUserPlaylists();
@@ -804,9 +785,7 @@
 
         let playlistOptions = '';
         userPlaylistsCache.forEach(pl => {
-          const isSelected = pl.id === defaultFolderId ? 'selected' : '';
-          const label = pl.name === DEFAULT_PRESET_FOLDER_NAME ? `${pl.name} (Default)` : pl.name;
-          playlistOptions += `<option value="${pl.id}" ${isSelected}>${label}</option>`;
+          playlistOptions += `<option value="${pl.id}">${pl.name}</option>`;
         });
 
         let listHTML = `
@@ -897,12 +876,15 @@
         const token = await getValidAccessToken();
         if (!token) return;
 
-        const response = await fetch(`https://api.spotify.com/v1/playlists/${playlistId}/tracks`, {
+        // Querying playlist items endpoint with explicit limit
+        const response = await fetch(`https://api.spotify.com/v1/playlists/${playlistId}/tracks?limit=50`, {
           headers: { 'Authorization': `Bearer ${token}` }
         });
 
         if (!response.ok) {
-          container.innerHTML = `<p style="color:red;">Error loading playlist contents.</p>`;
+          const errData = await response.json().catch(() => null);
+          const msg = errData?.error?.message || response.status;
+          container.innerHTML = `<p style="color:red;">Error loading playlist contents (${msg}).</p>`;
           return;
         }
 
