@@ -86,37 +86,6 @@
       color: black;
     }
 
-    /* Grid Layout for Folder View */
-    .folder-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
-      gap: 16px;
-      padding: 8px;
-    }
-
-    .folder-item {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      text-align: center;
-      cursor: pointer;
-      padding: 6px;
-    }
-
-    .folder-item:hover {
-      background-color: #000080;
-      color: white;
-    }
-
-    .folder-item img {
-      width: 48px;
-      height: 48px;
-      object-fit: cover;
-      margin-bottom: 6px;
-      border: 1px solid #808080;
-      background-color: #c0c0c0;
-    }
-
     .track-item {
       display: flex;
       justify-content: space-between;
@@ -286,11 +255,11 @@
   <div class="desktop">
     <div class="desktop-icon" onclick="toggleWindow('player-window')">
       <img src="https://win98icons.alexmeub.com/icons/png/internet_connection_wiz-0.png" alt="IE">
-      <span>Spotify IE</span>
+      <span>Spotify Search</span>
     </div>
     <div class="desktop-icon" onclick="toggleWindow('f1-window')">
       <img src="https://win98icons.alexmeub.com/icons/png/accessibility_two_pointers-0.png" alt="F1 Stats">
-      <span>F1 Wiki</span>
+      <span>F1 Results</span>
     </div>
     <div class="desktop-icon" onclick="toggleWindow('clock-window')">
       <img src="https://win98icons.alexmeub.com/icons/png/clock-0.png" alt="Clock">
@@ -306,10 +275,10 @@
     </div>
   </div>
 
-  <!-- 1. SPOTIFY PLAYER WINDOW -->
+  <!-- 1. SPOTIFY SEARCH WINDOW -->
   <div class="window" id="player-window">
     <div class="title-bar">
-      <div class="title-bar-text">Internet Explorer - Retro Spotify Player</div>
+      <div class="title-bar-text">Internet Explorer - Spotify Global Search</div>
       <div class="title-bar-controls">
         <button aria-label="Minimize" onclick="toggleWindow('player-window')"></button>
         <button aria-label="Close" onclick="toggleWindow('player-window')"></button>
@@ -318,9 +287,9 @@
 
     <div class="window-body">
       <div class="address-bar-container">
-        <button id="back-btn" onclick="navUp()">Up 📁</button>
-        <label for="address">Address:</label>
-        <input id="address" type="text" value="C:\Spotify" style="flex-grow: 1;" readonly>
+        <label for="search-input">Search:</label>
+        <input id="search-input" type="text" placeholder="Type a track or artist name..." style="flex-grow: 1;">
+        <button onclick="performSpotifySearch()">Search 🔍</button>
       </div>
 
       <div class="browser-content" id="content-area">
@@ -331,7 +300,9 @@
 
         <div id="explorer-section" style="display: none;">
           <div class="now-playing-banner" id="now-playing-title">Status: Idle</div>
-          <div id="view-container"></div>
+          <div id="view-container">
+            <p style="color: #666;">Type a song or artist in the search bar above to play music.</p>
+          </div>
         </div>
       </div>
 
@@ -452,15 +423,12 @@
 
     let spotifyPlayer = null;
     let activeDeviceId = null;
-    let currentPath = 'root'; 
 
     const wallpapers = {
       teal: '',
       bliss: 'Windows-rolling-hills.jpg', 
       clouds: 'Windows_95_Bliss.jpg' 
     };
-
-    const defaultFolderIcon = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='48' height='48' viewBox='0 0 24 24' fill='%23e6c229'><path d='M10 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z'/></svg>";
 
     function applyDisplaySettings() {
       const selectedWallpaper = document.getElementById('wallpaper-select').value;
@@ -477,7 +445,7 @@
     }
 
     // ==========================================
-    // WIKIPEDIA F1 ENGINE
+    // WIKIPEDIA F1 ENGINE (ACCURATE STANDINGS FIX)
     // ==========================================
     function initF1App() {
       const yearSelect = document.getElementById('f1-year-select');
@@ -493,7 +461,6 @@
         yearSelect.appendChild(opt);
       }
 
-      // Default to 2024 (guaranteed fully archived season)
       yearSelect.value = '2024';
       yearSelect.addEventListener('change', () => loadWikiF1View('schedule'));
       loadWikiF1View('schedule');
@@ -523,34 +490,38 @@
         const doc = parser.parseFromString(data.parse.text['*'], 'text/html');
 
         let targetTable = null;
-        const tables = doc.querySelectorAll('table.wikitable');
+        const tables = Array.from(doc.querySelectorAll('table.wikitable'));
 
         if (viewType === 'schedule') {
-          // Look for table with "Grand Prix" or "Calendar"
-          for (let t of tables) {
-            const headerText = t.innerText.toLowerCase();
-            if (headerText.includes('grand prix') || headerText.includes('circuit') || headerText.includes('round')) {
-              targetTable = t;
-              break;
-            }
-          }
+          // Look for table with "Grand Prix" or "Circuit"
+          targetTable = tables.find(t => {
+            const txt = t.innerText.toLowerCase();
+            return txt.includes('grand prix') || txt.includes('circuit') || txt.includes('round');
+          });
         } else if (viewType === 'standings') {
-          // Look for table with "Driver" or "Points"
-          for (let t of tables) {
-            const headerText = t.innerText.toLowerCase();
-            if (headerText.includes('pos') && (headerText.includes('driver') || headerText.includes('points'))) {
-              targetTable = t;
-              break;
-            }
+          // Exclude race summary tables and find the World Drivers' Championship table
+          targetTable = tables.find(t => {
+            const txt = t.innerText.toLowerCase();
+            const caption = t.querySelector('caption')?.innerText.toLowerCase() || '';
+            const isStandingsHeader = txt.includes('driver') && (txt.includes('pts') || txt.includes('points'));
+            const isNotGrandsPrix = !txt.includes('grand prix') && !caption.includes('results');
+            return isStandingsHeader && isNotGrandsPrix;
+          });
+
+          // Secondary search fallback specifically targeting headers containing "Pos" and "Driver"
+          if (!targetTable) {
+            targetTable = tables.reverse().find(t => {
+              const txt = t.innerText.toLowerCase();
+              return txt.includes('pos') && txt.includes('driver');
+            });
           }
         }
 
         if (!targetTable && tables.length > 0) {
-          targetTable = tables[0]; // Fallback to first table
+          targetTable = tables[0];
         }
 
         if (targetTable) {
-          // Fix relative Wikipedia links
           const links = targetTable.querySelectorAll('a');
           links.forEach(a => {
             const href = a.getAttribute('href');
@@ -561,7 +532,7 @@
           });
 
           container.innerHTML = `
-            <h4 style="margin-top:0; margin-bottom: 6px;">Wikipedia Archive: ${year} F1 ${viewType === 'schedule' ? 'Schedule & Grands Prix' : 'Championship Standings'}</h4>
+            <h4 style="margin-top:0; margin-bottom: 6px;">Wikipedia Archive: ${year} F1 ${viewType === 'schedule' ? 'Schedule & Race Calendar' : "World Drivers' Championship Standings"}</h4>
             ${targetTable.outerHTML}
           `;
         } else {
@@ -572,6 +543,75 @@
         container.innerHTML = '<p>Error contacting Wikipedia API.</p>';
       }
     }
+
+    // ==========================================
+    // SPOTIFY OPEN SEARCH SYSTEM
+    // ==========================================
+    async function performSpotifySearch() {
+      const input = document.getElementById('search-input');
+      const container = document.getElementById('view-container');
+      if (!input || !container) return;
+
+      const query = input.value.trim();
+      if (!query) {
+        container.innerHTML = '<p>Please enter a search term.</p>';
+        return;
+      }
+
+      container.innerHTML = `<p>Searching Spotify for "${query}"...</p>`;
+
+      try {
+        const token = await getValidAccessToken();
+        if (!token) {
+          container.innerHTML = '<p>Please re-connect Spotify.</p>';
+          return;
+        }
+
+        const response = await fetch(`https://api.spotify.com/v1/search?q=${encodeURIComponent(query)}&type=track&limit=25`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+
+        if (!response.ok) {
+          container.innerHTML = `<p>Search error (${response.status}). Token may be invalid.</p>`;
+          return;
+        }
+
+        const data = await response.json();
+        const tracks = data?.tracks?.items || [];
+
+        if (tracks.length === 0) {
+          container.innerHTML = `<p>No results found for "${query}".</p>`;
+          return;
+        }
+
+        let listHTML = '<ul style="list-style: none; padding: 0; margin: 0;">';
+        tracks.forEach(t => {
+          const artist = t.artists && t.artists.length > 0 ? t.artists[0].name : 'Unknown Artist';
+          const album = t.album ? t.album.name : '';
+          
+          listHTML += `
+            <li class="track-item">
+              <div>
+                <strong>${t.name}</strong> - ${artist}
+                <br><small style="color:#666;">${album}</small>
+              </div>
+              <button onclick="playSingleTrack('${t.uri}')">▶ Play</button>
+            </li>
+          `;
+        });
+        listHTML += '</ul>';
+        container.innerHTML = listHTML;
+
+      } catch (err) {
+        console.error('Spotify Search Exception:', err);
+        container.innerHTML = '<p>Error completing search request.</p>';
+      }
+    }
+
+    // Allow Enter key inside search bar
+    document.getElementById('search-input').addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') performSpotifySearch();
+    });
 
     // ==========================================
     // MINESWEEPER LOGIC
@@ -729,194 +769,6 @@
     }
 
     initMinesweeper();
-
-    // ==========================================
-    // FOLDER & EXPLORER NAVIGATION SYSTEM
-    // ==========================================
-    function setAddressPath(path) {
-      document.getElementById('address').value = `C:\\Spotify\\${path}`;
-    }
-
-    function renderRootView() {
-      currentPath = 'root';
-      setAddressPath('');
-      const container = document.getElementById('view-container');
-      container.innerHTML = `
-        <div class="folder-grid">
-          <div class="folder-item" onclick="loadPlaylistsFolder()">
-            <img src="${defaultFolderIcon}">
-            <span>Playlists</span>
-          </div>
-          <div class="folder-item" onclick="loadRecentTracks()">
-            <img src="https://win98icons.alexmeub.com/icons/png/cd_audio_cd-0.png" onerror="this.src='${defaultFolderIcon}'">
-            <span>Recently Played</span>
-          </div>
-        </div>
-      `;
-    }
-
-    async function loadPlaylistsFolder() {
-      currentPath = 'playlists';
-      setAddressPath('Playlists');
-      const container = document.getElementById('view-container');
-      container.innerHTML = '<p>Loading playlists...</p>';
-
-      try {
-        const token = await getValidAccessToken();
-        if (!token) {
-          container.innerHTML = '<p>Please re-connect Spotify.</p>';
-          return;
-        }
-
-        const response = await fetch('https://api.spotify.com/v1/me/playlists?limit=50', {
-          headers: { Authorization: `Bearer ${token}` }
-        });
-
-        if (!response.ok) {
-          container.innerHTML = '<p>Error reading playlists. Try re-connecting.</p>';
-          return;
-        }
-
-        const data = await response.json();
-        container.innerHTML = '';
-
-        if (data.items && data.items.length > 0) {
-          const gridDiv = document.createElement('div');
-          gridDiv.className = 'folder-grid';
-
-          data.items.forEach(playlist => {
-            const imgUrl = (playlist.images && playlist.images.length > 0) 
-              ? playlist.images[0].url 
-              : defaultFolderIcon;
-
-            const itemDiv = document.createElement('div');
-            itemDiv.className = 'folder-item';
-            itemDiv.innerHTML = `
-              <img src="${imgUrl}" onerror="this.src='${defaultFolderIcon}'">
-              <span>${playlist.name}</span>
-            `;
-
-            itemDiv.addEventListener('click', () => {
-              loadPlaylistTracks(playlist.id, playlist.uri, playlist.name);
-            });
-
-            gridDiv.appendChild(itemDiv);
-          });
-          container.appendChild(gridDiv);
-        } else {
-          container.innerHTML = '<p>No playlists found in your account.</p>';
-        }
-      } catch (err) {
-        container.innerHTML = '<p>Error loading playlists.</p>';
-      }
-    }
-
-    async function loadPlaylistTracks(playlistId, playlistUri, playlistName) {
-      currentPath = 'playlist_contents';
-      setAddressPath(`Playlists\\${playlistName}`);
-      const container = document.getElementById('view-container');
-      container.innerHTML = '<p>Opening playlist...</p>';
-
-      try {
-        const token = await getValidAccessToken();
-        if (!token) {
-          container.innerHTML = '<p>Session expired. Please click Disconnect and log back in.</p>';
-          return;
-        }
-
-        // Passing market=from_token resolves local track variations & permissions
-        const response = await fetch(`https://api.spotify.com/v1/playlists/${playlistId}/tracks?market=from_token&limit=100`, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
-
-        if (!response.ok) {
-          container.innerHTML = `<p>Error fetching tracks (${response.status}). Token may lack permissions or playlist is restricted.</p>`;
-          return;
-        }
-
-        const data = await response.json();
-        const items = data.items || [];
-        const validTracks = [];
-
-        items.forEach(item => {
-          const t = item.track || item.item || item;
-          if (t && (t.name || t.title)) {
-            const trackName = t.name || t.title;
-            const artistName = (t.artists && t.artists.length > 0) 
-              ? t.artists[0].name 
-              : (t.show ? t.show.name : 'Unknown Artist');
-            const uri = t.uri || playlistUri;
-
-            validTracks.push({
-              name: trackName,
-              artist: artistName,
-              uri: uri
-            });
-          }
-        });
-
-        if (validTracks.length > 0) {
-          let listHTML = '<ul style="list-style: none; padding: 0; margin: 0;">';
-          validTracks.forEach((track, index) => {
-            listHTML += `
-              <li class="track-item">
-                <span><strong>${track.name}</strong> - ${track.artist}</span>
-                <button onclick="playContext('${playlistUri}', ${index})">Play</button>
-              </li>
-            `;
-          });
-          listHTML += '</ul>';
-          container.innerHTML = listHTML;
-        } else {
-          container.innerHTML = '<p>No playable tracks found in this playlist.</p>';
-        }
-      } catch (err) {
-        console.error('Playlist Track Exception:', err);
-        container.innerHTML = '<p>Error loading playlist tracks.</p>';
-      }
-    }
-
-    async function loadRecentTracks() {
-      currentPath = 'recent';
-      setAddressPath('Recently Played');
-      const container = document.getElementById('view-container');
-      container.innerHTML = '<p>Loading tracks...</p>';
-
-      try {
-        const token = await getValidAccessToken();
-        const response = await fetch('https://api.spotify.com/v1/me/player/recently-played?limit=20', {
-          headers: { Authorization: `Bearer ${token}` }
-        });
-        const data = await response.json();
-
-        let listHTML = '<ul style="list-style: none; padding: 0; margin: 0;">';
-        if (data.items && data.items.length > 0) {
-          data.items.forEach(item => {
-            const track = item.track;
-            listHTML += `
-              <li class="track-item">
-                <span><strong>${track.name}</strong> - ${track.artists[0]?.name || 'Unknown Artist'}</span>
-                <button onclick="playSingleTrack('${track.uri}')">Play</button>
-              </li>
-            `;
-          });
-        } else {
-          listHTML += '<li>No recently played tracks.</li>';
-        }
-        listHTML += '</ul>';
-        container.innerHTML = listHTML;
-      } catch (err) {
-        container.innerHTML = '<p>Error loading recent tracks.</p>';
-      }
-    }
-
-    function navUp() {
-      if (currentPath === 'playlist_contents') {
-        loadPlaylistsFolder();
-      } else if (currentPath === 'playlists' || currentPath === 'recent') {
-        renderRootView();
-      }
-    }
 
     // ==========================================
     // WINDOW DRAGGING & TOGGLE LOGIC
@@ -1089,7 +941,6 @@
         document.getElementById('device-status').innerText = 'Connected';
         document.getElementById('auth-section').style.display = 'none';
         document.getElementById('explorer-section').style.display = 'block';
-        renderRootView();
       });
 
       spotifyPlayer.addListener('player_state_changed', state => {
@@ -1101,23 +952,6 @@
 
       spotifyPlayer.connect();
     };
-
-    async function playContext(contextUri, trackPosition) {
-      if (!activeDeviceId) return;
-      const token = await getValidAccessToken();
-
-      await fetch(`https://api.spotify.com/v1/me/player/play?device_id=${activeDeviceId}`, {
-        method: 'PUT',
-        body: JSON.stringify({ 
-          context_uri: contextUri,
-          offset: { position: trackPosition }
-        }),
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-      });
-    }
 
     async function playSingleTrack(uri) {
       if (!activeDeviceId) return;
@@ -1159,7 +993,6 @@
       }
     }
 
-    // Initialize application
     initApp();
   </script>
 </body>
