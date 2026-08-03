@@ -1270,7 +1270,7 @@
 
       const data = await response.json();
       saveTokens(data);
-      window.history.replaceState({}, document.title, window.location.pathname);
+      window.history.replaceState({}, document.title, window.location.origin + window.location.pathname);
       return data.access_token;
     }
 
@@ -1304,19 +1304,24 @@
     }
 
     async function getValidAccessToken() {
-      const expiresAt = localStorage.getItem('expires_at');
-      const accessToken = localStorage.getItem('access_token');
+  const expiresAt = localStorage.getItem('expires_at');
+  const accessToken = localStorage.getItem('access_token');
 
-      if (accessToken && Date.now() < Number(expiresAt)) {
-        return accessToken;
-      }
+  // Check if current access token is valid and not expired
+  if (accessToken && Date.now() < Number(expiresAt)) {
+    return accessToken;
+  }
 
-      if (localStorage.getItem('refresh_token')) {
-        return await refreshAccessToken();
-      }
+  // Attempt to fetch a new access token using refresh_token
+  if (localStorage.getItem('refresh_token')) {
+    const newToken = await refreshAccessToken();
+    if (newToken) return newToken;
+  }
 
-      return null;
-    }
+  // If no valid tokens exist, purge storage so stale tokens aren't sent
+  localStorage.clear();
+  return null;
+}
 
     window.onSpotifyWebPlaybackSDKReady = async () => {
       const token = await getValidAccessToken();
