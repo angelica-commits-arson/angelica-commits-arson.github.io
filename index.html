@@ -192,6 +192,18 @@
       border: 1px inset #7d7d7d;
     }
 
+    #ms-reset-btn {
+      font-family: 'Segoe UI Emoji', 'Apple Color Emoji', 'Noto Color Emoji', sans-serif;
+      font-size: 16px;
+      min-width: 32px;
+      height: 32px;
+      padding: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+    }
+
     .ms-grid {
       display: grid;
       grid-template-columns: repeat(9, 24px);
@@ -213,6 +225,7 @@
       justify-content: center;
       font-weight: bold;
       font-size: 12px;
+      font-family: 'Segoe UI Emoji', sans-serif;
       cursor: pointer;
     }
 
@@ -267,7 +280,7 @@
     </div>
   </div>
 
-  <!-- 1. SPOTIFY PLAYER WINDOW -->
+  <!-- SPOTIFY PLAYER WINDOW -->
   <div class="window" id="player-window">
     <div class="title-bar">
       <div class="title-bar-text">Internet Explorer - Retro Spotify Player</div>
@@ -278,14 +291,12 @@
     </div>
 
     <div class="window-body">
-      <!-- Address Bar Controls -->
       <div class="address-bar-container">
         <button id="back-btn" onclick="navUp()">Up 📁</button>
         <label for="address">Address:</label>
         <input id="address" type="text" value="C:\Spotify" style="flex-grow: 1;" readonly>
       </div>
 
-      <!-- Main Directory Content -->
       <div class="browser-content" id="content-area">
         <div id="auth-section">
           <p>Welcome! Click below to authorize your Spotify Premium account.</p>
@@ -298,7 +309,6 @@
         </div>
       </div>
 
-      <!-- Player Control Bar -->
       <div class="field-row player-controls">
         <button id="play-btn">▶ Play</button>
         <button id="pause-btn">⏸ Pause</button>
@@ -309,7 +319,7 @@
     </div>
   </div>
 
-  <!-- 2. CLOCK GADGET WINDOW -->
+  <!-- CLOCK GADGET WINDOW -->
   <div class="window" id="clock-window">
     <div class="title-bar">
       <div class="title-bar-text">Clock</div>
@@ -322,7 +332,7 @@
     </div>
   </div>
 
-  <!-- 3. DISPLAY PROPERTIES WINDOW -->
+  <!-- DISPLAY PROPERTIES WINDOW -->
   <div class="window" id="display-window">
     <div class="title-bar">
       <div class="title-bar-text">Display Properties</div>
@@ -358,7 +368,7 @@
     </div>
   </div>
 
-  <!-- 4. MINESWEEPER WINDOW -->
+  <!-- MINESWEEPER WINDOW -->
   <div class="window" id="minesweeper-window" style="display: none;">
     <div class="title-bar">
       <div class="title-bar-text">Minesweeper</div>
@@ -369,7 +379,7 @@
     <div class="window-body">
       <div class="ms-header">
         <div class="ms-counter" id="ms-mine-count">010</div>
-        <button id="ms-reset-btn" onclick="initMinesweeper()" style="min-width: 30px; height: 30px; padding: 0;">🙂</button>
+        <button id="ms-reset-btn" onclick="initMinesweeper()">&#128578;</button>
         <div class="ms-counter" id="ms-timer">000</div>
       </div>
       <div class="ms-grid" id="ms-board"></div>
@@ -386,7 +396,6 @@
   </div>
 
   <script>
-    // Configuration Settings
     const CLIENT_ID = '4692b9fae514427c9a94e6bde0d8e390'; 
     const REDIRECT_URI = 'https://angelica-commits-arson.github.io/'; 
     const SCOPES = 'user-read-recently-played user-library-read user-modify-playback-state streaming user-read-playback-state playlist-read-private playlist-read-collaborative';
@@ -395,18 +404,15 @@
     let activeDeviceId = null;
     let currentPath = 'root'; 
 
-    // Local Image Mapping
     const wallpapers = {
       teal: '',
       bliss: 'Windows-rolling-hills.jpg', 
       clouds: 'Windows_95_Bliss.jpg' 
     };
 
-    // Inline SVG Folder Icon Fallback
     const defaultFolderIcon = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='48' height='48' viewBox='0 0 24 24' fill='%23e6c229'><path d='M10 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z'/></svg>";
 
     function applyDisplaySettings() {
-      // Background Wallpaper
       const selectedWallpaper = document.getElementById('wallpaper-select').value;
       const body = document.getElementById('desktop-body');
       if (selectedWallpaper === 'teal') {
@@ -416,25 +422,27 @@
         body.style.backgroundImage = `url('${wallpapers[selectedWallpaper]}')`;
       }
 
-      // Clock Text Color
       const selectedColor = document.getElementById('clock-color-select').value;
       document.getElementById('gadget-clock').style.color = selectedColor;
     }
 
     // ==========================================
-    // MINESWEEPER LOGIC (9x9 with 10 mines)
+    // MINESWEEPER LOGIC
     // ==========================================
     const MS_ROWS = 9, MS_COLS = 9, MS_MINES = 10;
-    let msBoard = [], msGameOver = false, msTimer = 0, msInterval = null, msFlags = 0;
+    let msBoard = [], msGameOver = false, msTimer = 0, msInterval = null, msFlags = 10;
 
     function initMinesweeper() {
-      clearInterval(msInterval);
+      if (msInterval) {
+        clearInterval(msInterval);
+        msInterval = null;
+      }
       msTimer = 0;
       msFlags = MS_MINES;
       msGameOver = false;
       document.getElementById('ms-timer').innerText = '000';
       document.getElementById('ms-mine-count').innerText = '010';
-      document.getElementById('ms-reset-btn').innerText = '🙂';
+      document.getElementById('ms-reset-btn').innerHTML = '&#128578;'; // 🙂
 
       const boardEl = document.getElementById('ms-board');
       boardEl.innerHTML = '';
@@ -442,7 +450,6 @@
         mine: false, revealed: false, flagged: false, count: 0
       })));
 
-      // Plant Mines
       let planted = 0;
       while (planted < MS_MINES) {
         let r = Math.floor(Math.random() * MS_ROWS);
@@ -453,7 +460,6 @@
         }
       }
 
-      // Calculate Neighbor Counts
       for (let r = 0; r < MS_ROWS; r++) {
         for (let c = 0; c < MS_COLS; c++) {
           if (msBoard[r][c].mine) continue;
@@ -470,7 +476,6 @@
         }
       }
 
-      // Render Cells
       for (let r = 0; r < MS_ROWS; r++) {
         for (let c = 0; c < MS_COLS; c++) {
           let cell = document.createElement('div');
@@ -517,7 +522,6 @@
         const colors = ['', 'blue', 'green', 'red', 'darkblue', 'brown', 'teal', 'black', 'gray'];
         el.style.color = colors[cellObj.count];
       } else {
-        // Flood fill empty neighbors
         for (let dr = -1; dr <= 1; dr++) {
           for (let dc = -1; dc <= 1; dc++) {
             let nr = r + dr, nc = c + dc;
@@ -561,10 +565,12 @@
 
     function endGame(won) {
       msGameOver = true;
-      clearInterval(msInterval);
-      document.getElementById('ms-reset-btn').innerText = won ? '😎' : '😵';
+      if (msInterval) {
+        clearInterval(msInterval);
+        msInterval = null;
+      }
+      document.getElementById('ms-reset-btn').innerHTML = won ? '&#128526;' : '&#128565;'; // 😎 or 😵
 
-      // Reveal all mines
       for (let r = 0; r < MS_ROWS; r++) {
         for (let c = 0; c < MS_COLS; c++) {
           if (msBoard[r][c].mine) {
@@ -575,7 +581,6 @@
       }
     }
 
-    // Initialize Minesweeper on startup
     initMinesweeper();
 
     // ==========================================
@@ -617,69 +622,82 @@
 
         if (response.status === 401 || response.status === 403) {
           localStorage.clear();
-          container.innerHTML = '<p>Session expired or permissions updated. <button onclick="redirectToSpotifyAuth()">Please Re-connect Spotify</button></p>';
+          container.innerHTML = '<p>Session expired. <button onclick="redirectToSpotifyAuth()">Re-connect Spotify</button></p>';
           return;
         }
 
         const data = await response.json();
+        container.innerHTML = '';
 
-        let gridHTML = '<div class="folder-grid">';
         if (data.items && data.items.length > 0) {
+          const gridDiv = document.createElement('div');
+          gridDiv.className = 'folder-grid';
+
           data.items.forEach(playlist => {
             const imgUrl = (playlist.images && playlist.images.length > 0) 
               ? playlist.images[0].url 
               : defaultFolderIcon;
 
-            gridHTML += `
-              <div class="folder-item" onclick="loadPlaylistTracks('${playlist.id}', '${playlist.uri}', '${encodeURIComponent(playlist.name)}')">
-                <img src="${imgUrl}" onerror="this.src='${defaultFolderIcon}'">
-                <span>${playlist.name}</span>
-              </div>
+            const itemDiv = document.createElement('div');
+            itemDiv.className = 'folder-item';
+            itemDiv.dataset.id = playlist.id;
+            itemDiv.dataset.uri = playlist.uri;
+            itemDiv.dataset.name = playlist.name;
+
+            itemDiv.innerHTML = `
+              <img src="${imgUrl}" onerror="this.src='${defaultFolderIcon}'">
+              <span>${playlist.name}</span>
             `;
+
+            itemDiv.addEventListener('click', () => {
+              loadPlaylistTracks(playlist.id, playlist.uri, playlist.name);
+            });
+
+            gridDiv.appendChild(itemDiv);
           });
+          container.appendChild(gridDiv);
         } else {
-          gridHTML += '<p>No playlists found in your account.</p>';
+          container.innerHTML = '<p>No playlists found in your account.</p>';
         }
-        gridHTML += '</div>';
-        container.innerHTML = gridHTML;
       } catch (err) {
         container.innerHTML = '<p>Error loading playlists. Please re-connect Spotify.</p>';
       }
     }
 
-    async function loadPlaylistTracks(playlistId, playlistUri, encodedName) {
+    async function loadPlaylistTracks(playlistId, playlistUri, playlistName) {
       currentPath = 'playlist_contents';
-      const name = decodeURIComponent(encodedName);
-      setAddressPath(`Playlists\\${name}`);
+      setAddressPath(`Playlists\\${playlistName}`);
       const container = document.getElementById('view-container');
       container.innerHTML = '<p>Opening playlist...</p>';
 
       try {
         const token = await getValidAccessToken();
-        const response = await fetch(`https://api.spotify.com/v1/playlists/${playlistId}/tracks?limit=50`, {
+        const response = await fetch(`https://api.spotify.com/v1/playlists/${playlistId}/tracks?limit=100`, {
           headers: { Authorization: `Bearer ${token}` }
         });
-        const data = await response.json();
 
-        let listHTML = '<ul style="list-style: none; padding: 0; margin: 0;">';
-        if (data.items && data.items.length > 0) {
-          data.items.forEach((item, index) => {
-            if (!item.track) return;
+        const data = await response.json();
+        const tracksList = (data.items || []).filter(item => item && item.track);
+
+        if (tracksList.length > 0) {
+          let listHTML = '<ul style="list-style: none; padding: 0; margin: 0;">';
+          tracksList.forEach((item, index) => {
             const track = item.track;
+            const artistName = track.artists && track.artists.length > 0 ? track.artists[0].name : 'Unknown Artist';
             listHTML += `
               <li class="track-item">
-                <span><strong>${track.name}</strong> - ${track.artists[0]?.name || 'Unknown Artist'}</span>
+                <span><strong>${track.name}</strong> - ${artistName}</span>
                 <button onclick="playContext('${playlistUri}', ${index})">Play</button>
               </li>
             `;
           });
+          listHTML += '</ul>';
+          container.innerHTML = listHTML;
         } else {
-          listHTML += '<li>No tracks in this playlist.</li>';
+          container.innerHTML = '<p>No playable tracks found in this playlist.</p>';
         }
-        listHTML += '</ul>';
-        container.innerHTML = listHTML;
       } catch (err) {
-        container.innerHTML = '<p>Error loading tracks.</p>';
+        container.innerHTML = '<p>Error loading playlist tracks.</p>';
       }
     }
 
@@ -764,7 +782,6 @@
       el.style.display = (el.style.display === 'none') ? 'block' : 'none';
     }
 
-    // Live Clock Update
     function updateClocks() {
       const now = new Date();
       const timeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
@@ -941,7 +958,6 @@
       });
     }
 
-    // Button Listeners
     document.getElementById('login-btn').addEventListener('click', redirectToSpotifyAuth);
     document.getElementById('logout-btn').addEventListener('click', () => {
       localStorage.clear();
