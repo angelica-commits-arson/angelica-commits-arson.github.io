@@ -444,7 +444,7 @@
         <label for="f1-year-select">Season:</label>
         <select id="f1-year-select"></select>
 
-        <button onclick="loadWikiF1View('teams')">🏎️ Teams</button>
+        <button onclick="loadWikiF1View('teams')">🏎️ Teams & Entrants</button>
         <button onclick="loadWikiF1View('drivers')">🏆 Driver Standings</button>
         <button onclick="loadWikiF1View('schedule')">📅 Race Calendar</button>
       </div>
@@ -618,32 +618,33 @@
         const tables = Array.from(doc.querySelectorAll('table'));
 
         if (viewType === 'schedule') {
-          // Race Calendar Parsing
+          // Race Calendar / Grand Prix Results
           targetTable = tables.find(t => {
             const txt = t.innerText.toLowerCase();
             return (txt.includes('grand prix') || txt.includes('circuit') || txt.includes('date')) &&
                    (txt.includes('round') || txt.includes('winner') || txt.includes('location')) &&
-                   !txt.includes('drivers') && !txt.includes('constructors');
+                   !txt.includes('constructors\' championship') && !txt.includes('drivers\' championship');
           });
         } else if (viewType === 'teams') {
-          // Teams / Constructors Parsing
+          // Teams & Entrants Table Parsing
           targetTable = tables.find(t => {
             const txt = t.innerText.toLowerCase();
             const caption = t.querySelector('caption')?.innerText.toLowerCase() || '';
-            const isConstructorTable = (txt.includes('constructor') || txt.includes('team') || txt.includes('entrant')) &&
-                                       (txt.includes('pts') || txt.includes('points') || txt.includes('pos'));
-            const isNotDriver = !caption.includes('driver') && !txt.includes('world drivers');
-            return isConstructorTable && isNotDriver;
+            const isEntrantTable = (txt.includes('entrant') || txt.includes('constructor') || txt.includes('chassis') || txt.includes('engine')) &&
+                                   (txt.includes('driver') || txt.includes('rounds'));
+            const isNotStandings = !txt.includes('points') && !txt.includes('pts') && !caption.includes('standings');
+            return isEntrantTable && isNotStandings;
           });
 
+          // Fallback constructor table if strictly entry list table isn't matched
           if (!targetTable) {
-            targetTable = tables.reverse().find(t => {
+            targetTable = tables.find(t => {
               const txt = t.innerText.toLowerCase();
-              return (txt.includes('constructor') || txt.includes('team')) && txt.includes('pos');
+              return (txt.includes('constructor') || txt.includes('team')) && (txt.includes('chassis') || txt.includes('engine'));
             });
           }
         } else if (viewType === 'drivers') {
-          // Drivers Championship Parsing
+          // Drivers Championship Table Parsing
           targetTable = tables.find(t => {
             const txt = t.innerText.toLowerCase();
             const caption = t.querySelector('caption')?.innerText.toLowerCase() || '';
@@ -667,7 +668,7 @@
             }
           });
 
-          let titleLabel = "Teams";
+          let titleLabel = "Teams & Entrants";
           if (viewType === 'drivers') titleLabel = "Driver Standings";
           if (viewType === 'schedule') titleLabel = "Race Calendar";
 
@@ -685,7 +686,7 @@
     }
 
     // ==========================================
-    // SPOTIFY PLAYLIST MANAGEMENT (Robust Folder Loading)
+    // SPOTIFY PLAYLIST MANAGEMENT
     // ==========================================
     async function loadUserPlaylists() {
       const sidebarList = document.getElementById('playlist-folder-list');
@@ -743,67 +744,71 @@
       try {
         const token = await getValidAccessToken();
         if (!token) {
-          container.innerHTML = `<p style="color:red;">No valid access token. Please reconnect Spotify.</p>`;
+          container.innerHTML = `<p style="color:red;">Session expired or token missing. Please click "Disconnect / Reset Session" and reconnect Spotify.</p>`;
           return;
         }
 
-        // Endpoint targeting tracks explicitly with limit handling
-        let response = await fetch(`https://api.spotify.com/v1/playlists/${playlistId}/tracks?limit=100`, {
-          headers: { 'Authorization': `Bearer ${token}` }
+        const response = await fetch(`https://api.spotify.com/v1/playlists/${playlistId}/tracks?limit=100`, {
+          method: 'GET',
+          headers: { 
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
         });
-
-        // Secondary fallback to root endpoint
-        if (!response.ok) {
-          response = await fetch(`https://api.spotify.com/v1/playlists/${playlistId}`, {
-            headers: { 'Authorization': `Bearer ${token}` }
-          });
-        }
 
         if (!response.ok) {
           const errData = await response.json().catch(() => null);
-          const msg = errData?.error?.message || `HTTP ${response.status}`;
-          container.innerHTML = `<p style="color:red;">Error loading playlist contents (${msg}). Try clicking "Disconnect / Reset Session" to renew access.</p>`;
+          const errorMsg = errData?.error?.message || `HTTP ${response.status}`;
+          
+          if (response.status === 401 || response.status === 403) {
+            container.innerHTML = `<p style="color:red;">Authorization error (${errorMsg}). Please click "Disconnect / Reset Session" to sign in again.</p>`;
+          } else {
+            container.innerHTML = `<p style="color:red;">Could not load folder contents: ${errorMsg}</p>`;
+          }
           return;
         }
 
         const data = await response.json();
-        const items = data.items ? data.items : (data.tracks ? data.tracks.items : []);
+        const items = data.items || [];
 
         let headerHTML = `
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; padding-bottom:4px; border-bottom:1px solid #808080;">
-            <h4 style="margin:0;">📁 Folder: ${playlistName} (${items ? items.length : 0} tracks)</h4>
+            <h4 style="margin:0;">📁 Folder: ${playlistName} (${items.length} items)</h4>
             <button onclick="playPlaylistContext('${playlistUri}')">▶ Play Folder</button>
           </div>
         `;
 
-        if (!items || items.length === 0) {
+        if (items.length === 0) {
           container.innerHTML = headerHTML + '<p>This folder is empty.</p>';
           return;
         }
 
         let listHTML = headerHTML + '<ul style="list-style: none; padding: 0; margin: 0;">';
+        
         items.forEach(item => {
-          const t = item.track || item;
-          if (!t || !t.name) return;
-          const artist = (t.artists && t.artists.length > 0) ? t.artists[0].name : 'Unknown Artist';
-          const album = t.album ? t.album.name : '';
+          const track = item.track || item;
+          if (!track || !track.name || !track.uri) return;
+
+          const artist = (track.artists && track.artists.length > 0) ? track.artists[0].name : 'Unknown Artist';
+          const album = track.album ? track.album.name : '';
 
           listHTML += `
-            <li class="track-item">
-              <div>
-                <strong>${t.name}</strong> - ${artist}
+            <li class="track-item" style="display:flex; justify-content:space-between; align-items:center; padding: 4px 0; border-bottom: 1px dotted #ccc;">
+              <div style="flex-grow: 1; padding-right: 8px;">
+                <strong>${track.name}</strong> - ${artist}
                 <br><small style="color:#666;">${album}</small>
               </div>
-              <button onclick="playSingleTrack('${t.uri}')">▶ Play</button>
+              <button onclick="playSingleTrack('${track.uri}')">▶ Play</button>
             </li>
           `;
         });
+        
         listHTML += '</ul>';
         container.innerHTML = listHTML;
 
       } catch (err) {
         console.error('Error fetching playlist tracks:', err);
-        container.innerHTML = '<p style="color:red;">Error loading folder tracks.</p>';
+        container.innerHTML = `<p style="color:red;">Error loading folder tracks: ${err.message}</p>`;
       }
     }
 
