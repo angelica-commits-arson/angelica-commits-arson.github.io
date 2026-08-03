@@ -551,7 +551,6 @@
       const currentYear = new Date().getFullYear();
       yearSelect.innerHTML = '';
       
-      // Start season selections from 1981 upwards
       for (let y = currentYear; y >= 1981; y--) {
         const opt = document.createElement('option');
         opt.value = y;
@@ -701,18 +700,15 @@
       }
     }
 
-    async function createSpotifyPlaylist(name) {
+    async function createSpotifyPlaylist(name, showAlerts = true) {
       const token = await getValidAccessToken();
-      if (!token) return null;
+      if (!token) {
+        if (showAlerts) alert('No active session. Please click "Disconnect / Reset Session" and log in again.');
+        return null;
+      }
 
       try {
-        // Fetch current user ID
-        const meRes = await fetch('https://api.spotify.com/v1/me', {
-          headers: { 'Authorization': `Bearer ${token}` }
-        });
-        const meData = await meRes.json();
-
-        const createRes = await fetch(`https://api.spotify.com/v1/users/${meData.id}/playlists`, {
+        const createRes = await fetch('https://api.spotify.com/v1/me/playlists', {
           method: 'POST',
           headers: {
             'Authorization': `Bearer ${token}`,
@@ -727,9 +723,16 @@
 
         if (createRes.ok) {
           return await createRes.json();
+        } else {
+          const errData = await createRes.json().catch(() => null);
+          const detail = errData?.error?.message || `HTTP ${createRes.status}`;
+          if (showAlerts) {
+            alert(`Could not create folder: ${detail}\n\nTip: Click "Disconnect / Reset Session" to update your permissions.`);
+          }
         }
       } catch (err) {
         console.error('Failed to create playlist:', err);
+        if (showAlerts) alert('Error connecting to Spotify API.');
       }
       return null;
     }
@@ -738,12 +741,10 @@
       const name = prompt('Enter a name for your new playlist folder:', 'My Win98 Playlist');
       if (!name || !name.trim()) return;
 
-      const newPl = await createSpotifyPlaylist(name.trim());
+      const newPl = await createSpotifyPlaylist(name.trim(), true);
       if (newPl) {
         alert(`📁 Folder "${name}" created successfully!`);
         await loadUserPlaylists();
-      } else {
-        alert('Could not create folder. Check console or API permissions.');
       }
     }
 
@@ -801,7 +802,6 @@
           return;
         }
 
-        // Build folder selector options defaulting to preset folder
         let playlistOptions = '';
         userPlaylistsCache.forEach(pl => {
           const isSelected = pl.id === defaultFolderId ? 'selected' : '';
